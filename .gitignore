@@ -137,3 +137,11 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# End-to-end testing logs and videos (Cypress/Playwright)
+cypress/screenshots/
+cypress/videos/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
