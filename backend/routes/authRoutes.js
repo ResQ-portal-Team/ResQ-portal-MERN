@@ -5,23 +5,34 @@ const bcrypt = require('bcrypt');
 
 /**
  * @route   POST api/auth/check-existing
- * @desc    Check if Student ID or Email already exists (Real-time validation)
+ * @desc    Check if Student ID, Email or Nickname already exists (Real-time validation)
  */
 router.post('/check-existing', async (req, res) => {
     try {
-        const { field, value } = req.body; // field will be 'studentId' or 'email'
+        const { field, value } = req.body; 
         
-        // Dynamic query based on the field provided
+        // database එකේ අදාළ field එකේ මේ value එක තියෙනවද බලනවා
         const user = await User.findOne({ [field]: value });
         
         if (user) {
-            const fieldName = field === 'studentId' ? 'Student ID' : 'Email address';
+            // field එක අනුව අදාළ message එක තීරණය කරනවා
+            let errorMessage = "";
+            if (field === 'studentId') {
+                errorMessage = "This Student ID is already registered.";
+            } else if (field === 'email') {
+                errorMessage = "This Email address is already registered.";
+            } else if (field === 'nickname') {
+                //  nickname එකට අදාළ message එක
+                errorMessage = "Sorry! This nickname is already taken.";
+            }
+
             return res.status(400).json({ 
                 exists: true, 
-                message: `This ${fieldName} is already registered.` 
+                message: errorMessage 
             });
         }
         
+        // කිසිම යූසර් කෙනෙක් නැත්නම් success ප්‍රතිචාරයක් යවනවා
         res.status(200).json({ exists: false });
     } catch (err) {
         console.error("Validation Error:", err);
@@ -37,12 +48,15 @@ router.post('/register', async (req, res) => {
     try {
         const { studentId, realName, email, nickname, password } = req.body;
 
-        // Double check even at the final step to be safe
+        // අවසන් පියවරේදීත් ආරක්ෂාව සඳහා නැවත වරක් database එක check කරනවා
         const existingEmail = await User.findOne({ email });
         if (existingEmail) return res.status(400).json("This email is already registered.");
 
         const existingID = await User.findOne({ studentId });
         if (existingID) return res.status(400).json("This Student ID is already registered.");
+
+        const existingNickname = await User.findOne({ nickname });
+        if (existingNickname) return res.status(400).json("This Nickname is already taken.");
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
