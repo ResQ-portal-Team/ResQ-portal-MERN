@@ -1,0 +1,124 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const [showLogin, setShowLogin] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans">
+      {/* Navigation Bar */}
+      <nav className="bg-white shadow-sm p-4 flex justify-between items-center px-8 sticky top-0 z-50">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+          <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
+          <span className="text-xl font-bold text-gray-800 tracking-tight text-center">Portal</span>
+        </div>
+        <div className="flex items-center gap-6">
+          <button className="text-gray-600 font-medium hover:text-blue-600 transition">Browse</button>
+          <button 
+            onClick={() => setShowLogin(true)} 
+            className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200"
+          >
+            Sign In
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero Header Section */}
+      <div className="relative bg-blue-900 text-white py-20 px-8 text-center bg-cover bg-center" style={{backgroundImage: 'linear-gradient(rgba(0,0,30,0.7), rgba(0,0,30,0.7)), url("https://images.unsplash.com/photo-1523050853023-8c2d29149f0b?auto=format&fit=crop&q=80")'}}>
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <h1 className="text-5xl md:text-6xl font-black mb-6 leading-tight">Lost Something? <span className="text-yellow-400">We'll Help.</span></h1>
+          <p className="text-xl opacity-90 mb-10 max-w-2xl mx-auto font-light leading-relaxed">Report lost items, browse found belongings, and connect with fellow students on the SLIIT campus.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg">
+              🔍 Browse Items
+            </button>
+            <button className="bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 px-8 py-4 rounded-xl font-bold text-lg transition-all">
+              Report an Item →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards Section */}
+      <div className="max-w-6xl mx-auto -mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 px-4 relative z-20">
+        {[
+          { label: 'Items Reported', value: '1,247', icon: '📦', color: 'text-blue-600' },
+          { label: 'Items Returned', value: '893', icon: '📈', color: 'text-green-600' },
+          { label: 'Trust Score Avg', value: '87%', icon: '🛡️', color: 'text-yellow-600' },
+          { label: 'Events This Month', value: '12', icon: '📅', color: 'text-purple-600' }
+        ].map((stat, idx) => (
+          <div key={idx} className="bg-white p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-shadow border border-gray-100 flex flex-col items-center text-center">
+            <div className="text-3xl mb-3">{stat.icon}</div>
+            <div className={`text-3xl font-black ${stat.color}`}>{stat.value}</div>
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent Posts Section */}
+      <div className="max-w-6xl mx-auto py-20 px-4">
+        <div className="flex justify-between items-end mb-10">
+          <div>
+            <h2 className="text-3xl font-black text-gray-900 mb-2">Recent Posts</h2>
+            <p className="text-gray-500">Latest lost & found reports from across the campus</p>
+          </div>
+          <button className="text-blue-600 font-bold hover:text-blue-800 transition flex items-center gap-1 group">
+            View All <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </button>
+        </div>
+
+        {/* Example Item Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 hover:shadow-2xl transition-all group duration-300">
+            <div className="relative h-56 bg-gray-100 overflow-hidden">
+              <span className="absolute top-4 left-4 z-10 bg-red-500 text-white text-[10px] uppercase font-black px-3 py-1 rounded-full tracking-tighter">Lost</span>
+              <div className="w-full h-full bg-[url('https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&q=80')] bg-cover bg-center group-hover:scale-110 transition-transform duration-500"></div>
+            </div>
+            <div className="p-6">
+              <h3 className="font-bold text-xl text-gray-800 mb-2">MacBook Pro Charger</h3>
+              <p className="text-sm text-gray-600 mb-6 leading-relaxed line-clamp-2">White 67W USB-C charger, left in the computer lab during the afternoon session.</p>
+              <div className="flex justify-between items-center pt-4 border-t border-gray-50">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Lab A3</span>
+                <button className="text-blue-600 text-sm font-black hover:underline transition-all">VIEW DETAILS</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Login Modal Overlay */}
+      {showLogin && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative animate-in fade-in zoom-in duration-300">
+            <button onClick={() => setShowLogin(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">✕</button>
+            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login to ResQ</h2>
+            <div className="space-y-4">
+              <input type="email" placeholder="Student Email" className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all" />
+              <input type="password" placeholder="Password" className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all" />
+              <button className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">Sign In</button>
+              <p className="text-center text-sm text-gray-500 mt-4">
+                Don't have an account? <span onClick={() => navigate('/onboarding')} className="text-blue-600 font-bold cursor-pointer hover:underline">Register with AI</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Chat Bot Access */}
+      <button 
+        onClick={() => navigate('/onboarding')}
+        className="fixed bottom-8 right-8 bg-blue-600 text-white p-5 rounded-2xl shadow-2xl hover:bg-blue-700 hover:-translate-y-2 transition-all flex items-center gap-3 group z-50"
+      >
+        <span className="font-bold text-sm tracking-tight">Register via Bot</span>
+        <span className="text-2xl group-hover:rotate-12 transition-transform">🤖</span>
+      </button>
+
+      <footer className="text-center py-12 text-gray-400 text-xs font-medium border-t bg-white mt-12">
+        © 2026 ResQ Portal — SLIIT Campus. Built for students, by students.
+      </footer>
+    </div>
+  );
+};
+
+export default Dashboard;

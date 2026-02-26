@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Professional Animations */
+@layer utilities {
+  /* Breathing animation with 3D rotation */
+  @keyframes breathing {
+    0%, 100% { 
+      transform: translateY(0px) rotateX(4deg) rotateY(-8deg); 
+    }
+    50% { 
+      transform: translateY(-25px) rotateX(6deg) rotateY(-10deg) scale(1.03); 
+    }
+  }
+
+  .animate-breathing {
+    animation: breathing 4s ease-in-out infinite;
+  }
+
+  .perspective-2000 {
+    perspective: 2000px;
+  }
+
+  .rotate-3d-tilt {
+    transform: rotateY(-12deg) rotateX(6deg);
+  }
+}
+
+/* Smooth scrolling for navigation */
+html {
+  scroll-behavior: smooth;
+}

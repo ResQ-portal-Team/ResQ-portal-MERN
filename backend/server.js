@@ -9,10 +9,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
+
+app.use('/api/items', require('./routes/itemRoutes'));
+
 // MongoDB Connection
 const uri = process.env.MONGO_URI;
+
 mongoose.connect(uri)
-    .then(() => console.log("✅ MongoDB Atlas Connected!"))
+    .then(() => {
+        // මෙතන තමයි කලින් වැරදි මැසේජ් එක තිබ්බේ. දැන් මේක හරියට පේනවා.
+        if (uri.includes('127.0.0.1') || uri.includes('localhost')) {
+            console.log("✅ MongoDB Local Connected!");
+        } else {
+            console.log("✅ MongoDB Atlas Connected!");
+        }
+    })
     .catch(err => console.log("❌ Connection Error: ", err));
 
 // Basic Route
