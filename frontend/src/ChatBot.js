@@ -10,7 +10,7 @@ const ChatBot = () => {
     const [formData, setFormData] = useState({ studentId: '', realName: '', email: '', nickname: '', password: '' });
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [isBlocked, setIsBlocked] = useState(false); // අලුත් State එකක් flow එක නවත්තන්න
+    const [isBlocked, setIsBlocked] = useState(false); 
 
     const steps = ["studentId", "realName", "email", "nickname", "password"];
     const prompts = [
@@ -21,8 +21,8 @@ const ChatBot = () => {
         "Registration complete! Redirecting..."
     ];
 
-    const addBotMessage = (text) => {
-        setMessages(prev => [...prev, { text, sender: "bot" }]);
+    const addBotMessage = (text, isError = false) => {
+        setMessages(prev => [...prev, { text, sender: "bot", isError }]);
     };
 
     const handleRestart = () => {
@@ -41,10 +41,10 @@ const ChatBot = () => {
         setLoading(true);
 
         try {
-            // Real-time Validation
-            if (currentField === 'studentId' || currentField === 'email') {
+            // Real-time Validation for ID, Email, and Nickname
+            if (currentField === 'studentId' || currentField === 'email' || currentField === 'nickname') {
                 if (currentField === 'email' && !currentInput.endsWith('@my.sliit.lk')) {
-                    addBotMessage("❌ Please use a valid @my.sliit.lk email address.");
+                    addBotMessage("❌ Please use a valid @my.sliit.lk email address.", true);
                     setLoading(false);
                     return;
                 }
@@ -57,9 +57,22 @@ const ChatBot = () => {
 
                 if (!checkRes.ok) {
                     const errorData = await checkRes.json();
-                    addBotMessage(`❌ ${errorData.message}`);
-                    addBotMessage("It looks like you already have an account. Do you need any other help or would you like to try again?");
-                    setIsBlocked(true); // මෙතනින් Flow එක නවත්වනවා
+                    
+                    if (currentField === 'studentId') {
+                        // Student ID එකට පමණක් Block කර Restart Button එක පෙන්වයි
+                        addBotMessage(`❌ ${errorData.message}`, true);
+                        addBotMessage("It looks like you already have an account. Do you need any other help or would you like to try again?");
+                        setIsBlocked(true); 
+                    } else if (currentField === 'email') {
+                        // Email එක වැරදි නම් බ්ලොක් නොකර නැවත අසයි
+                        addBotMessage(`❌ ${errorData.message}`, true);
+                        addBotMessage("Please check your email or use a different email address to continue.");
+                    } else if (currentField === 'nickname') {
+                        // Nickname එක වැරදි නම් බ්ලොක් නොකර නැවත අසයි
+                        addBotMessage(`❌ Sorry! This nickname is already taken.`, true);
+                        addBotMessage("Please choose a different nickname.");
+                    }
+                    
                     setLoading(false);
                     return;
                 }
@@ -83,7 +96,7 @@ const ChatBot = () => {
                 setStep(step + 1);
             }
         } catch (err) {
-            addBotMessage("❌ Connection error.");
+            addBotMessage("❌ Connection error.", true);
         } finally {
             setLoading(false);
         }
@@ -99,7 +112,13 @@ const ChatBot = () => {
             <div className="h-[400px] overflow-y-auto p-6 space-y-4 bg-gray-50">
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-3 rounded-2xl ${msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-white border text-gray-700'}`}>
+                        <div className={`max-w-[80%] p-3 rounded-2xl ${
+                            msg.sender === 'user' 
+                                ? 'bg-blue-600 text-white' 
+                                : msg.isError 
+                                    ? 'bg-red-50 border border-red-200 text-red-600' 
+                                    : 'bg-white border text-gray-700'
+                        }`}>
                             {msg.text}
                         </div>
                     </div>
