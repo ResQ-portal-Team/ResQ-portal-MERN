@@ -12,6 +12,10 @@ const ChatBot = () => {
     const [loading, setLoading] = useState(false);
     const [isBlocked, setIsBlocked] = useState(false); 
 
+    // Backend URL එක මෙතන වෙනම define කරමු. 
+    // localhost වැඩ නැත්නම් මේක 127.0.0.1 කරලා බලන්න.
+    const API_BASE_URL = "http://127.0.0.1:5000/api/auth"; 
+
     const steps = ["studentId", "realName", "email", "nickname", "password"];
     const prompts = [
         "Great! Now, what is your Real Name?",
@@ -41,7 +45,6 @@ const ChatBot = () => {
         setLoading(true);
 
         try {
-            // Real-time Validation for ID, Email, and Nickname
             if (currentField === 'studentId' || currentField === 'email' || currentField === 'nickname') {
                 if (currentField === 'email' && !currentInput.endsWith('@my.sliit.lk')) {
                     addBotMessage("❌ Please use a valid @my.sliit.lk email address.", true);
@@ -49,7 +52,8 @@ const ChatBot = () => {
                     return;
                 }
 
-                const checkRes = await fetch('http://localhost:5000/api/auth/check-existing', {
+                // API Call - check-existing
+                const checkRes = await fetch(`${API_BASE_URL}/check-existing`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ field: currentField, value: currentInput })
@@ -59,16 +63,13 @@ const ChatBot = () => {
                     const errorData = await checkRes.json();
                     
                     if (currentField === 'studentId') {
-                        // Student ID එකට පමණක් Block කර Restart Button එක පෙන්වයි
                         addBotMessage(`❌ ${errorData.message}`, true);
                         addBotMessage("It looks like you already have an account. Do you need any other help or would you like to try again?");
                         setIsBlocked(true); 
                     } else if (currentField === 'email') {
-                        // Email එක වැරදි නම් බ්ලොක් නොකර නැවත අසයි
                         addBotMessage(`❌ ${errorData.message}`, true);
                         addBotMessage("Please check your email or use a different email address to continue.");
                     } else if (currentField === 'nickname') {
-                        // Nickname එක වැරදි නම් බ්ලොක් නොකර නැවත අසයි
                         addBotMessage(`❌ Sorry! This nickname is already taken.`, true);
                         addBotMessage("Please choose a different nickname.");
                     }
@@ -82,7 +83,8 @@ const ChatBot = () => {
             setFormData(updatedFormData);
 
             if (currentField === 'password') {
-                const res = await fetch('http://localhost:5000/api/auth/register', {
+                // API Call - register
+                const res = await fetch(`${API_BASE_URL}/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedFormData)
@@ -96,7 +98,8 @@ const ChatBot = () => {
                 setStep(step + 1);
             }
         } catch (err) {
-            addBotMessage("❌ Connection error.", true);
+            console.error("Fetch error:", err);
+            addBotMessage("❌ Connection error. Please check if the backend is running.", true);
         } finally {
             setLoading(false);
         }
