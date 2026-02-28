@@ -39,8 +39,8 @@ app.get('/', (req, res) => {
 });
 
 // --- Server Startup ---
-const PORT = process.env.PORT || 5000;
+// server.js එකේ අන්තිම හරිය
+const PORT = process.env.PORT || 5000; // .env එකේ නැත්නම් විතරක් 5000 ගනී
 app.listen(PORT, () => {
-    console.log(`🚀 Server is flying on port ${PORT}`);
-    console.log(`🔗 Local URL: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
