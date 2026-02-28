@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+
 // Base API URL (set REACT_APP_API_URL in frontend/.env to override)
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
