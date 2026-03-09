@@ -14,7 +14,12 @@ const Dashboard = () => {
           <span className="text-xl font-bold text-gray-800 tracking-tight text-center">Portal</span>
         </div>
         <div className="flex items-center gap-6">
-          <button className="text-gray-600 font-medium hover:text-blue-600 transition">Browse</button>
+          <button
+            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            onClick={() => navigate('/community-hub')}
+          >
+            Community Hub
+          </button>
           <button 
             onClick={() => setShowLogin(true)} 
             className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200"
