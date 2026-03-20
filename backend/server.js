@@ -7,7 +7,8 @@ const app = express();
 
 // --- Middleware ---
 // app.use(cors()); // Proxy එක පාවිච්චි කරන නිසා CORS දැන් අත්‍යවශ්‍ය නැහැ
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // --- Routes ---
 const authRoutes = require('./routes/authRoutes');
