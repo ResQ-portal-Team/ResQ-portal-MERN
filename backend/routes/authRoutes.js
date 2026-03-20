@@ -8,6 +8,9 @@ router.post('/check-existing', authController.checkExisting);
 // Route for final registration
 router.post('/register', authController.register);
 
+// Route for login
+router.post('/login', authController.login);
+
 // Route for dashboard statistics
 router.get('/stats', authController.getStats);
 
