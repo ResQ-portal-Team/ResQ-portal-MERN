@@ -1,8 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const CommunityHub = () => {
   const navigate = useNavigate();
+  const [postTitle, setPostTitle] = useState('');
+  const [postContent, setPostContent] = useState('');
+  const [postMessage, setPostMessage] = useState('');
+
+  const handleClear = () => {
+    setPostTitle('');
+    setPostContent('');
+    setPostMessage('');
+  };
+
+  const handlePost = () => {
+    if (!postTitle.trim() || !postContent.trim()) {
+      setPostMessage('Please enter both title and details before posting.');
+      return;
+    }
+
+    // Placeholder behavior until backend post endpoint is added.
+    setPostMessage('Post submitted in UI. Connect this to backend to save it.');
+    setPostTitle('');
+    setPostContent('');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -39,19 +60,32 @@ const CommunityHub = () => {
           <div className="space-y-4">
             <input
               type="text"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
               placeholder="Post title (e.g. Found headphones near library)"
               className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <textarea
               rows="4"
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
               placeholder="Share more details with the community..."
               className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
+            {postMessage && (
+              <p className="text-sm text-gray-600">{postMessage}</p>
+            )}
             <div className="flex gap-3 justify-end">
-              <button className="px-4 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 transition">
+              <button
+                onClick={handleClear}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 transition"
+              >
                 Clear
               </button>
-              <button className="px-5 py-2 rounded-xl text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-md shadow-blue-200">
+              <button
+                onClick={handlePost}
+                className="px-5 py-2 rounded-xl text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-md shadow-blue-200"
+              >
                 Post to Hub
               </button>
             </div>
