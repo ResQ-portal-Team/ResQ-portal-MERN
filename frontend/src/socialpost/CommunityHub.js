@@ -27,7 +27,6 @@ const CommunityHub = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Top Bar */}
       <nav className="bg-white shadow-sm p-4 flex justify-between items-center px-8 sticky top-0 z-50">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
@@ -41,7 +40,6 @@ const CommunityHub = () => {
         </button>
       </nav>
 
-      {/* Header */}
       <header className="bg-blue-900 text-white py-14 px-6 text-center">
         <h1 className="text-4xl md:text-5xl font-black mb-4">Community Hub</h1>
         <p className="max-w-2xl mx-auto text-blue-100 text-lg">
@@ -49,9 +47,7 @@ const CommunityHub = () => {
         </p>
       </header>
 
-      {/* Content Layout */}
       <main className="max-w-6xl mx-auto py-10 px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Create Post Card */}
         <section className="lg:col-span-2 bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Create a Social Post</h2>
           <p className="text-sm text-gray-500 mb-4">
@@ -72,9 +68,7 @@ const CommunityHub = () => {
               placeholder="Share more details with the community..."
               className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
-            {postMessage && (
-              <p className="text-sm text-gray-600">{postMessage}</p>
-            )}
+            {postMessage && <p className="text-sm text-gray-600">{postMessage}</p>}
             <div className="flex gap-3 justify-end">
               <button
                 onClick={handleClear}
@@ -92,12 +86,11 @@ const CommunityHub = () => {
           </div>
         </section>
 
-        {/* Side Panel */}
         <aside className="space-y-6">
           <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
             <h3 className="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider">Tips</h3>
             <ul className="text-sm text-gray-600 space-y-2 list-disc list-inside">
-              <li>Don’t share sensitive personal information.</li>
+              <li>Don't share sensitive personal information.</li>
               <li>Add clear locations and times.</li>
               <li>Be respectful to other community members.</li>
             </ul>
@@ -115,4 +108,3 @@ const CommunityHub = () => {
 };
 
 export default CommunityHub;
-

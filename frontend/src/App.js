@@ -4,7 +4,7 @@ import './index.css';
 import ChatBot from './ChatBot';
 import Dashboard from './Dashboard';
 import LandingPage from './LandingPage'; // Make sure you have created LandingPage.js
-import CommunityHub from './CommunityHub';
+import CommunityHub from './socialpost/CommunityHub';
 
 function App() {
   return (
