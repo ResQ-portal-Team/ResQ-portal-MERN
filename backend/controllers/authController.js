@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 // Check if Student ID, Email or Nickname already exists
 exports.checkExisting = async (req, res) => {
@@ -79,5 +80,53 @@ exports.getStats = async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ message: "Error fetching statistics." });
+    }
+};
+
+// Login user
+exports.login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const jwtSecret = process.env.JWT_SECRET;
+
+        if (!jwtSecret) {
+            console.error("Login Error: JWT_SECRET is not configured.");
+            return res.status(500).json({ message: "Server configuration error. Please contact support." });
+        }
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required." });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ message: "Invalid email or password." });
+        }
+
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if (!isPasswordMatch) {
+            return res.status(400).json({ message: "Invalid email or password." });
+        }
+
+        const token = jwt.sign(
+            { id: user._id, email: user.email, nickname: user.nickname },
+            jwtSecret,
+            { expiresIn: '7d' }
+        );
+
+        res.status(200).json({
+            message: "Login successful.",
+            token,
+            user: {
+                id: user._id,
+                studentId: user.studentId,
+                realName: user.realName,
+                email: user.email,
+                nickname: user.nickname
+            }
+        });
+    } catch (err) {
+        console.error("Login Error:", err);
+        res.status(500).json({ message: "Server error during login." });
     }
 };
