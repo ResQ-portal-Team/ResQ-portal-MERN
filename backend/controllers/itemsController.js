@@ -35,6 +35,23 @@ const postForm = (urlString, formParams) =>
     new Promise((resolve, reject) => {
         const url = new URL(urlString);
         const body = formParams.toString();
+        let settled = false;
+
+        const fail = (error) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            reject(error);
+        };
+
+        const succeed = (data) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            resolve(data);
+        };
 
         const request = https.request(
             {
@@ -59,20 +76,25 @@ const postForm = (urlString, formParams) =>
                     try {
                         data = responseBody ? JSON.parse(responseBody) : {};
                     } catch (error) {
-                        return reject(createHttpError('Invalid response from image service.', 502));
+                        return fail(createHttpError('Invalid response from image service.', 502));
                     }
 
                     if (response.statusCode < 200 || response.statusCode >= 300) {
-                        return reject(createHttpError(data?.error?.message || 'Image upload failed.', 502));
+                        return fail(createHttpError(data?.error?.message || 'Image upload failed.', 502));
                     }
 
-                    return resolve(data);
+                    return succeed(data);
                 });
             }
         );
 
         request.on('error', () => {
-            reject(createHttpError('Unable to reach image service.', 502));
+            fail(createHttpError('Unable to reach image service.', 502));
+        });
+
+        request.setTimeout(15000, () => {
+            request.destroy();
+            fail(createHttpError('Image service timeout. Please try again.', 504));
         });
 
         request.write(body);

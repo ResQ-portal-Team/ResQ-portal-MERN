@@ -90,10 +90,13 @@ const Dashboard = () => {
   }, []);
 
   const requestApi = async (path, options = {}) => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
     const requestOptions = {
       headers: {
         ...(options.headers || {}),
       },
+      signal: controller.signal,
       ...options,
     };
 
@@ -110,10 +113,15 @@ const Dashboard = () => {
 
       return data;
     } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
       if (!error.status) {
         throw new Error('Unable to reach the server. Please check that the backend is running.');
       }
       throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   };
 
