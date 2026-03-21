@@ -1,6 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
-// const cors = require('cors'); // අනවශ්‍යයි, මම මේක comment කළා (ඕනනම් අයින් කරලා දාන්න)
+// const cors = require('cors'); 
 require('dotenv').config();
 
 const app = express();
@@ -22,14 +22,14 @@ const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/resq_portal";
 mongoose.connect(uri)
     .then(() => {
         if (uri.includes('127.0.0.1') || uri.includes('localhost')) {
-            console.log("✅ MongoDB Local Connected!");
+            console.log(" MongoDB Local Connected!");
         } else {
-            console.log("✅ MongoDB Atlas Connected!");
+            console.log(" MongoDB Atlas Connected!");
         }
     })
     .catch(err => {
-        console.error("❌ MongoDB Connection Error: ", err.message);
-        console.log("💡 Tip: Make sure your MongoDB Server is running locally.");
+        console.error(" MongoDB Connection Error: ", err.message);
+        console.log(" Tip: Make sure your MongoDB Server is running locally.");
     });
 
 // --- Basic Route ---
@@ -40,5 +40,5 @@ app.get('/', (req, res) => {
 // --- Server Startup ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log('Server running on port ${PORT}');
 });

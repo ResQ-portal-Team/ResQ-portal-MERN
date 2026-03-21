@@ -2,32 +2,71 @@ const express = require('express');
 const router = express.Router();
 const Item = require('../models/Item');
 
+// Mock function for Image Tagging (Replace with actual API call like Imagga later)
+async function getAIImageTags(imageUrl) {
+    // Placeholder tags until AI API is integrated
+    return ["item", "campus", "discovered"];
+}
+
 // Create a new item and check for matching items
 router.post('/add', async (req, res) => {
     try {
-        const newItem = new Item(req.body);
-        const savedItem = await newItem.save();
+        const { title, description, type, category, location, date, image, postedBy } = req.body;
 
-        // 1. Matching Logic: එකම category සහ location ඇති ප්‍රතිවිරුද්ධ වර්ගයේ අයිටම් එකක් සොයයි
-        const match = await Item.findOne({
-            type: savedItem.type === 'lost' ? 'found' : 'lost',
-            category: savedItem.category,
-            location: savedItem.location,
-            status: 'pending', // තවමත් හිමිකරුට ලැබී නැති අයිටම් පමණක් සොයයි
-            _id: { $ne: savedItem._id } // දැනට සේව් කරන අයිටම් එකම නැවත මැච් නොවීමට
+        // Fetch AI tags for the uploaded image
+        const aiTags = await getAIImageTags(image);
+
+        // Create the new item with AI tags
+        const newItem = new Item({
+            title,
+            description,
+            type,
+            category,
+            location,
+            date,
+            image,
+            postedBy,
+            imageTags: aiTags
         });
 
-        // 2. මැච් එකක් හම්බවුණොත් alert එකක් සමඟ රෙස්පොන්ස් එක යවයි
+        const savedItem = await newItem.save();
+
+        // INTELLIGENT MATCHING LOGIC
+        // Date logic: Lost date must be before or equal to the Found date
+        const dateQuery = type === 'lost' 
+            ? { date: { $gte: new Date(date) } } // If lost, look for found items on or after this date
+            : { date: { $lte: new Date(date) } }; // If found, look for lost items on or before this date
+
+        const match = await Item.findOne({
+            type: type === 'lost' ? 'found' : 'lost', // Match with opposite type
+            category: category,
+            location: location,
+            status: 'pending',
+            ...dateQuery,
+            _id: { $ne: savedItem._id } // Avoid matching with itself
+        });
+
+        // If a potential match is found
         if (match) {
+            // Update both items to link them via matchedWith field
+            savedItem.matchedWith = match._id;
+            await savedItem.save();
+
+            match.matchedWith = savedItem._id;
+            await match.save();
+
+            // Determine notification message based on current item type
+            const alertMessage = type === 'lost' ? "Item Found!" : "Owner Found!";
+
             return res.status(201).json({
-                message: "Item reported successfully and a potential match found!",
+                message: `Report successful and a potential match found! Notification: ${alertMessage}`,
                 item: savedItem,
                 matchFound: true,
-                matchedItem: match // මැච් වුණු අයිටම් එකේ විස්තර මෙතැනදී ලැබේ
+                matchedItem: match
             });
         }
 
-        // 3. මැච් එකක් නැතිනම් අයිටම් එක පමණක් සේව් කරයි
+        // Response if no match is found
         res.status(201).json({
             message: "Item reported successfully!",
             item: savedItem,
@@ -35,7 +74,8 @@ router.post('/add', async (req, res) => {
         });
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Error in item reporting:", err.message);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 

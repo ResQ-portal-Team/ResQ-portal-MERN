@@ -10,6 +10,7 @@ const ItemSchema = new mongoose.Schema({
     // Location for matching: "Canteen", "Lab 01", "Main Hall"
     location: { type: String, required: true },
     image: { type: String }, // URL or filename for the uploaded image
+    imageTags: { type: [String], default: [] }, // AI Matching ekata keywords save karanna 
     date: { type: Date, default: Date.now },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     // Status: "pending" for active posts, "returned" for matched and handed over items
