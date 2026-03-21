@@ -1,42 +1,37 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const itemsController = require('../controllers/itemsController');
+
 const router = express.Router();
-const Item = require('../models/Item');
 
-// Create a new item and check for matching items
-router.post('/add', async (req, res) => {
+const authenticate = (req, res, next) => {
     try {
-        const newItem = new Item(req.body);
-        const savedItem = await newItem.save();
+        const authHeader = req.headers.authorization || '';
 
-        // 1. Matching Logic: එකම category සහ location ඇති ප්‍රතිවිරුද්ධ වර්ගයේ අයිටම් එකක් සොයයි
-        const match = await Item.findOne({
-            type: savedItem.type === 'lost' ? 'found' : 'lost',
-            category: savedItem.category,
-            location: savedItem.location,
-            status: 'pending', // තවමත් හිමිකරුට ලැබී නැති අයිටම් පමණක් සොයයි
-            _id: { $ne: savedItem._id } // දැනට සේව් කරන අයිටම් එකම නැවත මැච් නොවීමට
-        });
-
-        // 2. මැච් එකක් හම්බවුණොත් alert එකක් සමඟ රෙස්පොන්ස් එක යවයි
-        if (match) {
-            return res.status(201).json({
-                message: "Item reported successfully and a potential match found!",
-                item: savedItem,
-                matchFound: true,
-                matchedItem: match // මැච් වුණු අයිටම් එකේ විස්තර මෙතැනදී ලැබේ
-            });
+        if (!authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'Authentication required.' });
         }
 
-        // 3. මැච් එකක් නැතිනම් අයිටම් එක පමණක් සේව් කරයි
-        res.status(201).json({
-            message: "Item reported successfully!",
-            item: savedItem,
-            matchFound: false
-        });
+        const jwtSecret = process.env.JWT_SECRET;
 
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        if (!jwtSecret) {
+            return res.status(500).json({ message: 'JWT secret is not configured.' });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        req.user = jwt.verify(token, jwtSecret);
+        next();
+    } catch (error) {
+        return res.status(401).json({ message: 'Invalid or expired token.' });
     }
-});
+};
+
+router.get('/', itemsController.getItems);
+router.get('/:id', itemsController.getItemById);
+router.post('/', authenticate, itemsController.createItem);
+router.post('/add', authenticate, itemsController.createItem);
+router.put('/:id', authenticate, itemsController.updateItem);
+router.patch('/:id/return', authenticate, itemsController.markItemAsReturned);
+router.delete('/:id', authenticate, itemsController.deleteItem);
 
 module.exports = router;
