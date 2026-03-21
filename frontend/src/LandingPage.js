@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('resqUser');
+    if (!storedUser) return;
+
+    try {
+      setCurrentUser(JSON.parse(storedUser));
+    } catch (error) {
+      localStorage.removeItem('resqUser');
+      localStorage.removeItem('resqToken');
+    }
+  }, []);
 
   // Handle smooth scroll for navigation links
   const scrollToSection = (id) => {
@@ -10,6 +24,13 @@ const LandingPage = () => {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('resqToken');
+    localStorage.removeItem('resqUser');
+    setCurrentUser(null);
+    setShowProfile(false);
   };
 
   return (
@@ -29,12 +50,21 @@ const LandingPage = () => {
              <button onClick={() => scrollToSection('stats')} className="hover:text-blue-600 transition-colors">Stats</button>
           </div>
 
-          <button 
-            onClick={() => navigate('/login')} 
-            className="bg-gray-900 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-all shadow-md"
-          >
-            Login
-          </button>
+          {currentUser ? (
+            <button
+              onClick={() => setShowProfile(true)}
+              className="bg-gray-900 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-all shadow-md"
+            >
+              My Profile
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="bg-gray-900 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-all shadow-md"
+            >
+              Login
+            </button>
+          )}
         </div>
       </nav>
 
@@ -138,6 +168,50 @@ const LandingPage = () => {
       <footer className="py-10 text-center text-gray-400 text-xs border-t border-gray-100">
         © 2026 ResQ Portal. Built for the SLIIT Community.
       </footer>
+
+      {/* Profile Modal */}
+      {showProfile && currentUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-xl relative animate-in fade-in zoom-in duration-300">
+            <button onClick={() => setShowProfile(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">✕</button>
+            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">My Profile</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-gray-400 text-xs uppercase font-bold">Full Name</p>
+                <p className="text-gray-800 font-semibold mt-1">{currentUser.realName}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-gray-400 text-xs uppercase font-bold">Nickname</p>
+                <p className="text-gray-800 font-semibold mt-1">{currentUser.nickname}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-gray-400 text-xs uppercase font-bold">Student ID</p>
+                <p className="text-gray-800 font-semibold mt-1">{currentUser.studentId}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-gray-400 text-xs uppercase font-bold">Email</p>
+                <p className="text-gray-800 font-semibold mt-1">{currentUser.email}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowProfile(false)}
+                className="px-5 py-2 rounded-full font-bold border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleLogout}
+                className="bg-gray-800 text-white px-5 py-2 rounded-full font-bold hover:bg-black transition"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

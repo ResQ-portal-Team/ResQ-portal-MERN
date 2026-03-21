@@ -49,7 +49,7 @@ const ChatBot = () => {
                     return;
                 }
 
-                // Proxy එක නිසා කෙලින්ම Path එක විතරක් දෙන්න
+                // Fetching from proxy defined in package.json
                 const checkRes = await fetch('/api/auth/check-existing', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -58,16 +58,19 @@ const ChatBot = () => {
 
                 if (!checkRes.ok) {
                     const errorData = await checkRes.json();
+                    const errMsg = errorData.message || "Validation failed";
                     
+                    addBotMessage(`❌ ${errMsg}`, true);
+
                     if (currentField === 'studentId') {
-                        addBotMessage(`❌ ${errorData.message}`, true);
-                        addBotMessage("It looks like you already have an account. Do you need any other help or would you like to try again?");
-                        setIsBlocked(true); 
+                        // Check if the error message contains "already" to trigger blocking logic
+                        if (errMsg.toLowerCase().includes("already")) {
+                            addBotMessage("It looks like you already have an account. Do you need help or want to try again?");
+                            setIsBlocked(true); 
+                        }
                     } else if (currentField === 'email') {
-                        addBotMessage(`❌ ${errorData.message}`, true);
                         addBotMessage("Please check your email or use a different email address to continue.");
                     } else if (currentField === 'nickname') {
-                        addBotMessage(`❌ Sorry! This nickname is already taken.`, true);
                         addBotMessage("Please choose a different nickname.");
                     }
                     
@@ -80,7 +83,7 @@ const ChatBot = () => {
             setFormData(updatedFormData);
 
             if (currentField === 'password') {
-                // Register fetch එකත් අප්ඩේට් කළා
+                // Registration request
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -89,13 +92,16 @@ const ChatBot = () => {
                 if (res.ok) {
                     addBotMessage("✅ All set! Redirecting...");
                     setTimeout(() => navigate('/dashboard'), 2000);
+                } else {
+                    const regError = await res.json();
+                    addBotMessage(`❌ Registration failed: ${regError.message}`, true);
                 }
             } else {
                 addBotMessage(prompts[step]);
                 setStep(step + 1);
             }
         } catch (err) {
-            addBotMessage("❌ Connection error. Backend එක දුවනවද බලන්න.", true);
+            addBotMessage("❌ Connection error. Please make sure the backend is running.", true);
         } finally {
             setLoading(false);
         }
