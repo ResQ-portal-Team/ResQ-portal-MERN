@@ -12,7 +12,7 @@ const authenticate = (req, res, next) => {
             return res.status(401).json({ message: 'Authentication required.' });
         }
 
-        const jwtSecret = process.env.JWT_SECRET;
+        const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "dev_jwt_secret_change_me" : null);
 
         if (!jwtSecret) {
             return res.status(500).json({ message: 'JWT secret is not configured.' });
