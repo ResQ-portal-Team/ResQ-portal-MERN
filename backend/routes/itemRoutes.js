@@ -1,97 +1,37 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const itemsController = require('../controllers/itemsController');
+
 const router = express.Router();
-const Item = require('../models/Item');
 
-// Mock function for Image Tagging (Replace with actual API call like Imagga later)
-async function getAIImageTags(imageUrl) {
-    // Placeholder tags until AI API is integrated
-    return ["item", "campus", "discovered"];
-}
-
-// Get recent items for dashboard
-router.get('/', async (req, res) => {
+const authenticate = (req, res, next) => {
     try {
-        const items = await Item.find()
-            .sort({ createdAt: -1 })
-            .limit(12)
-            .populate('postedBy', 'nickname realName');
+        const authHeader = req.headers.authorization || '';
 
-        res.status(200).json({ items });
-    } catch (err) {
-        console.error("Error fetching items:", err.message);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// Create a new item and check for matching items
-router.post('/add', async (req, res) => {
-    try {
-        const { title, description, type, category, location, date, image, postedBy } = req.body;
-
-        // Fetch AI tags for the uploaded image
-        const aiTags = await getAIImageTags(image);
-
-        // Create the new item with AI tags
-        const newItem = new Item({
-            title,
-            description,
-            type,
-            category,
-            location,
-            date,
-            image,
-            postedBy,
-            imageTags: aiTags
-        });
-
-        const savedItem = await newItem.save();
-
-        // INTELLIGENT MATCHING LOGIC
-        // Date logic: Lost date must be before or equal to the Found date
-        const dateQuery = type === 'lost' 
-            ? { date: { $gte: new Date(date) } } // If lost, look for found items on or after this date
-            : { date: { $lte: new Date(date) } }; // If found, look for lost items on or before this date
-
-        const match = await Item.findOne({
-            type: type === 'lost' ? 'found' : 'lost', // Match with opposite type
-            category: category,
-            location: location,
-            status: 'pending',
-            ...dateQuery,
-            _id: { $ne: savedItem._id } // Avoid matching with itself
-        });
-
-        // If a potential match is found
-        if (match) {
-            // Update both items to link them via matchedWith field
-            savedItem.matchedWith = match._id;
-            await savedItem.save();
-
-            match.matchedWith = savedItem._id;
-            await match.save();
-
-            // Determine notification message based on current item type
-            const alertMessage = type === 'lost' ? "Item Found!" : "Owner Found!";
-
-            return res.status(201).json({
-                message: `Report successful and a potential match found! Notification: ${alertMessage}`,
-                item: savedItem,
-                matchFound: true,
-                matchedItem: match
-            });
+        if (!authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'Authentication required.' });
         }
 
-        // Response if no match is found
-        res.status(201).json({
-            message: "Item reported successfully!",
-            item: savedItem,
-            matchFound: false
-        });
+        const jwtSecret = process.env.JWT_SECRET;
 
-    } catch (err) {
-        console.error("Error in item reporting:", err.message);
-        res.status(500).json({ error: "Internal Server Error" });
+        if (!jwtSecret) {
+            return res.status(500).json({ message: 'JWT secret is not configured.' });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        req.user = jwt.verify(token, jwtSecret);
+        next();
+    } catch (error) {
+        return res.status(401).json({ message: 'Invalid or expired token.' });
     }
-});
+};
+
+router.get('/', itemsController.getItems);
+router.get('/:id', itemsController.getItemById);
+router.post('/', authenticate, itemsController.createItem);
+router.post('/add', authenticate, itemsController.createItem);
+router.put('/:id', authenticate, itemsController.updateItem);
+router.patch('/:id/return', authenticate, itemsController.markItemAsReturned);
+router.delete('/:id', authenticate, itemsController.deleteItem);
 
 module.exports = router;
