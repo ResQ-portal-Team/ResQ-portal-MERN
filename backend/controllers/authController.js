@@ -87,7 +87,7 @@ exports.getStats = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const jwtSecret = process.env.JWT_SECRET;
+        const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "dev_jwt_secret_change_me" : null);
 
         if (!jwtSecret) {
             console.error("Login Error: JWT_SECRET is not configured.");
