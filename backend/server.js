@@ -26,9 +26,9 @@ app.use((err, req, res, next) => {
 
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/resq_portal';
 
-
 mongoose.connect(uri)
-    .then(() => {
+  .then(() => {
+
         if (uri.includes('127.0.0.1') || uri.includes('localhost')) {
             console.log("✅ MongoDB Local Connected!");
         } else {
