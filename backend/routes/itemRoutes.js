@@ -8,6 +8,21 @@ async function getAIImageTags(imageUrl) {
     return ["item", "campus", "discovered"];
 }
 
+// Get recent items for dashboard
+router.get('/', async (req, res) => {
+    try {
+        const items = await Item.find()
+            .sort({ createdAt: -1 })
+            .limit(12)
+            .populate('postedBy', 'nickname realName');
+
+        res.status(200).json({ items });
+    } catch (err) {
+        console.error("Error fetching items:", err.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 // Create a new item and check for matching items
 router.post('/add', async (req, res) => {
     try {
