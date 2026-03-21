@@ -8,7 +8,7 @@
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm start",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "seed:community": "node backend/scripts/seedDummyCommunityEvents.js"
+    "seed:community": "node backend/scripts/seedCommunityEvents.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
