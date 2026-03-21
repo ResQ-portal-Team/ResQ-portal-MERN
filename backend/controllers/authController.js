@@ -74,7 +74,7 @@ exports.register = async (req, res) => {
         const newUser = new User({
             studentId,
             realName,
-            email,
+            email: normalizeEmail(email),
             nickname,
             password: hashedPassword
         });
@@ -110,7 +110,10 @@ exports.getStats = async (req, res) => {
     }
 };
 
-// Admin login only — hardcoded credentials; JWT payload { email, role: "admin" }
+/**
+ * Admin: hardcoded credentials (no registration).
+ * User: registered students — JWT includes role: "user".
+ */
 exports.login = async (req, res) => {
     try {
         const emailRaw = req.body?.email;
@@ -132,27 +135,64 @@ exports.login = async (req, res) => {
         const emailOk = normalizeEmail(email) === normalizeEmail(ADMIN_EMAIL);
         const passwordOk = password === ADMIN_PASSWORD;
 
-        if (!emailOk || !passwordOk) {
+        if (emailOk && passwordOk) {
+            const token = jwt.sign(
+                { email: ADMIN_EMAIL, role: 'admin' },
+                jwtSecret,
+                { expiresIn: '7d' }
+            );
+
+            return res.status(200).json({
+                message: 'Login successful',
+                token,
+                role: 'admin',
+                email: ADMIN_EMAIL,
+                user: {
+                    email: ADMIN_EMAIL,
+                    role: 'admin',
+                    nickname: 'Admin',
+                    realName: 'Administrator',
+                    studentId: '—',
+                },
+            });
+        }
+
+        const user = await User.findOne({
+            $or: [{ email: normalizeEmail(email) }, { email: email.trim() }],
+        });
+
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if (!isPasswordMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const token = jwt.sign(
-            { email: ADMIN_EMAIL, role: 'admin' },
+            {
+                id: user._id.toString(),
+                email: user.email,
+                role: 'user',
+                nickname: user.nickname,
+            },
             jwtSecret,
             { expiresIn: '7d' }
         );
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Login successful',
             token,
-            role: 'admin',
-            email: ADMIN_EMAIL,
+            role: 'user',
+            email: user.email,
             user: {
-                email: ADMIN_EMAIL,
-                role: 'admin',
-                nickname: 'Admin',
-                realName: 'Administrator',
-                studentId: '—',
+                id: user._id,
+                studentId: user.studentId,
+                realName: user.realName,
+                email: user.email,
+                nickname: user.nickname,
+                role: 'user',
             },
         });
     } catch (err) {

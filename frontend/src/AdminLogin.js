@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-/** Direct backend URL avoids CRA proxy sometimes dropping POST JSON bodies in dev. */
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+import { API_BASE } from './config';
 
 const parseJson = async (response) => {
   const text = await response.text();
@@ -47,7 +45,11 @@ const AdminLogin = () => {
       if (data.user) {
         localStorage.setItem('resqUser', JSON.stringify(data.user));
       }
-      navigate('/dashboard');
+      if (data.user?.role === 'admin') {
+        navigate('/admin-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Invalid credentials');
     } finally {

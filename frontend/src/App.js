@@ -6,8 +6,11 @@ import Dashboard from './Dashboard';
 import LandingPage from './LandingPage'; // Make sure you have created LandingPage.js
 import CommunityHub from './socialpost/CommunityHub';
 import CommunityHubContent from './socialpost/CommunityHubContent';
+import CommunityHubEventDetail from './socialpost/CommunityHubEventDetail';
 import ReportItem from './ReportItem';
 import AdminLogin from './AdminLogin';
+import AdminDashboard from './AdminDashboard';
+import ProtectedAdminRoute from './ProtectedAdminRoute';
 
 function App() {
   return (
@@ -18,6 +21,15 @@ function App() {
 
         {/* Admin login (hardcoded admin — no registration) */}
         <Route path="/login" element={<AdminLogin />} />
+
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          }
+        />
         
         {/* AI Assistant Registration - Dedicated for new users */}
         <Route path="/onboarding" element={
@@ -33,8 +45,9 @@ function App() {
         {/* The Main Application Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
 
-        {/* Community Hub — landing hero, then /community-hub/content for posts */}
+        {/* Community Hub — hero → list → event detail (video autoplays on detail) */}
         <Route path="/community-hub" element={<CommunityHub />} />
+        <Route path="/community-hub/content/:eventId" element={<CommunityHubEventDetail />} />
         <Route path="/community-hub/content" element={<CommunityHubContent />} />
 
         {/* Report Item Page */}

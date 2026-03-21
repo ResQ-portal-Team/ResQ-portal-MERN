@@ -815,9 +815,27 @@ const Dashboard = () => {
                 <p className="text-gray-400 text-xs uppercase font-bold">Email</p>
                 <p className="text-gray-800 font-semibold mt-1">{currentUser.email}</p>
               </div>
+              {currentUser.role && (
+                <div className="bg-gray-50 rounded-xl p-4 md:col-span-2">
+                  <p className="text-gray-400 text-xs uppercase font-bold">Role</p>
+                  <p className="text-gray-800 font-semibold mt-1 capitalize">{currentUser.role}</p>
+                </div>
+              )}
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              {currentUser.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfile(false);
+                    navigate('/admin-dashboard');
+                  }}
+                  className="px-5 py-2 rounded-full font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition mr-auto"
+                >
+                  Admin Dashboard
+                </button>
+              )}
               <button
                 onClick={() => setShowProfile(false)}
                 className="px-5 py-2 rounded-full font-bold border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
