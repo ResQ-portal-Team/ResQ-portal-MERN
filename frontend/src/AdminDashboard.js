@@ -57,7 +57,8 @@ const AdminDashboard = () => {
   const [tab, setTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [items, setItems] = useState([]);
-  const [communityEvents, setCommunityEvents] = useState([]);
+  const [communityEventsUpcoming, setCommunityEventsUpcoming] = useState([]);
+  const [communityEventsFinished, setCommunityEventsFinished] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionId, setActionId] = useState('');
@@ -93,7 +94,8 @@ const AdminDashboard = () => {
     const res = await fetch(`${API_BASE}/api/admin/community-events`, { headers: authHeaders() });
     const data = await parseJson(res);
     if (!res.ok) throw new Error(data.message || 'Failed to load community events');
-    setCommunityEvents(data.events || []);
+    setCommunityEventsUpcoming(data.upcoming || []);
+    setCommunityEventsFinished(data.finished || []);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -272,6 +274,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleMarkCommunityEventFinished = async (id) => {
+    if (!window.confirm('Mark this event as finished? It will appear under Finished events.')) return;
+    setActionId(`ce-fin-${id}`);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/community-events/${id}/mark-finished`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+      });
+      const data = await parseJson(res);
+      if (!res.ok) throw new Error(data.message || 'Could not mark as finished');
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setActionId('');
+    }
+  };
+
   const openEditCommunityEvent = (ev) => {
     setEditCommunityEvent(ev);
     setEditEventForm({
@@ -284,6 +304,7 @@ const AdminDashboard = () => {
       category: ev.category || 'Workshop',
       videoUrl: ev.videoUrl || '',
       contactInfo: ev.contactInfo || '',
+      manuallyFinished: Boolean(ev.manuallyFinished),
     });
     setEditBannerFile(null);
     setEditVideoFile(null);
@@ -309,6 +330,7 @@ const AdminDashboard = () => {
       category,
       videoUrl,
       contactInfo,
+      manuallyFinished,
     } = editEventForm;
 
     if (!title.trim() || !description.trim()) {
@@ -349,6 +371,7 @@ const AdminDashboard = () => {
         category,
         contactInfo: contactInfo.trim() || null,
         videoUrl: videoUrl.trim() || null,
+        manuallyFinished: Boolean(manuallyFinished),
       };
 
       if (bannerImageData) payload.bannerImageData = bannerImageData;
@@ -680,55 +703,121 @@ const AdminDashboard = () => {
               </form>
             </section>
 
-            <section>
-              <h2 className="text-lg font-bold text-slate-800 mb-3">Published events</h2>
-              <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-100 text-left">
-                    <tr>
-                      <th className="p-3 font-semibold">Title</th>
-                      <th className="p-3 font-semibold">Category</th>
-                      <th className="p-3 font-semibold">Starts</th>
-                      <th className="p-3 font-semibold">Venue</th>
-                      <th className="p-3 font-semibold">Organizer</th>
-                      <th className="p-3 font-semibold text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {communityEvents.map((ev) => (
-                      <tr key={ev._id} className="border-t border-slate-100">
-                        <td className="p-3 max-w-xs font-medium">{ev.title}</td>
-                        <td className="p-3">{ev.category}</td>
-                        <td className="p-3 whitespace-nowrap">{formatEventWhen(ev.startDateTime)}</td>
-                        <td className="p-3 max-w-[140px] truncate" title={ev.location}>
-                          {ev.location}
-                        </td>
-                        <td className="p-3">{ev.organizer}</td>
-                        <td className="p-3 text-right space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditCommunityEvent(ev)}
-                            disabled={Boolean(actionId)}
-                            className="text-blue-600 font-semibold hover:underline disabled:opacity-50"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCommunityEvent(ev._id)}
-                            disabled={Boolean(actionId)}
-                            className="text-red-600 font-semibold hover:underline disabled:opacity-50"
-                          >
-                            {actionId === `ce-${ev._id}` ? '…' : 'Delete'}
-                          </button>
-                        </td>
+            <section className="space-y-8">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 mb-3">Upcoming events</h2>
+                <p className="text-sm text-slate-500 mb-3">
+                  Shown first on the public hub. Use Mark finished (or Edit → checkbox) to move to Finished.
+                </p>
+                <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 text-left">
+                      <tr>
+                        <th className="p-3 font-semibold">Title</th>
+                        <th className="p-3 font-semibold">Category</th>
+                        <th className="p-3 font-semibold">Starts</th>
+                        <th className="p-3 font-semibold">Venue</th>
+                        <th className="p-3 font-semibold">Organizer</th>
+                        <th className="p-3 font-semibold text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {communityEvents.length === 0 && (
-                  <p className="p-6 text-slate-500 text-center">No community events yet.</p>
-                )}
+                    </thead>
+                    <tbody>
+                      {communityEventsUpcoming.map((ev) => (
+                        <tr key={ev._id} className="border-t border-slate-100">
+                          <td className="p-3 max-w-xs font-medium">{ev.title}</td>
+                          <td className="p-3">{ev.category}</td>
+                          <td className="p-3 whitespace-nowrap">{formatEventWhen(ev.startDateTime)}</td>
+                          <td className="p-3 max-w-[140px] truncate" title={ev.location}>
+                            {ev.location}
+                          </td>
+                          <td className="p-3">{ev.organizer}</td>
+                          <td className="p-3 text-right space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => handleMarkCommunityEventFinished(ev._id)}
+                              disabled={Boolean(actionId)}
+                              className="text-emerald-700 font-semibold hover:underline disabled:opacity-50"
+                            >
+                              {actionId === `ce-fin-${ev._id}` ? '…' : 'Mark finished'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openEditCommunityEvent(ev)}
+                              disabled={Boolean(actionId)}
+                              className="text-blue-600 font-semibold hover:underline disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCommunityEvent(ev._id)}
+                              disabled={Boolean(actionId)}
+                              className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                            >
+                              {actionId === `ce-${ev._id}` ? '…' : 'Delete'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {communityEventsUpcoming.length === 0 && (
+                    <p className="p-6 text-slate-500 text-center">No upcoming events.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 mb-3">Finished events</h2>
+                <p className="text-sm text-slate-500 mb-3">
+                  Past start dates (before today, UTC) or manually marked finished.
+                </p>
+                <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 text-left">
+                      <tr>
+                        <th className="p-3 font-semibold">Title</th>
+                        <th className="p-3 font-semibold">Category</th>
+                        <th className="p-3 font-semibold">Started</th>
+                        <th className="p-3 font-semibold">Status</th>
+                        <th className="p-3 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {communityEventsFinished.map((ev) => (
+                        <tr key={ev._id} className="border-t border-slate-100 opacity-90">
+                          <td className="p-3 max-w-xs font-medium">{ev.title}</td>
+                          <td className="p-3">{ev.category}</td>
+                          <td className="p-3 whitespace-nowrap">{formatEventWhen(ev.startDateTime)}</td>
+                          <td className="p-3 text-xs text-slate-600">
+                            {ev.finishedByManual ? 'Manual' : 'Past date'}
+                          </td>
+                          <td className="p-3 text-right space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditCommunityEvent(ev)}
+                              disabled={Boolean(actionId)}
+                              className="text-blue-600 font-semibold hover:underline disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCommunityEvent(ev._id)}
+                              disabled={Boolean(actionId)}
+                              className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                            >
+                              {actionId === `ce-${ev._id}` ? '…' : 'Delete'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {communityEventsFinished.length === 0 && (
+                    <p className="p-6 text-slate-500 text-center">No finished events yet.</p>
+                  )}
+                </div>
               </div>
             </section>
           </div>
@@ -893,6 +982,20 @@ const AdminDashboard = () => {
                   value={editEventForm.contactInfo}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, contactInfo: e.target.value }))}
                 />
+              </div>
+              <div className="md:col-span-2 flex items-start gap-2">
+                <input
+                  id="edit-manually-finished"
+                  type="checkbox"
+                  className="mt-1 rounded border-slate-300"
+                  checked={Boolean(editEventForm.manuallyFinished)}
+                  onChange={(e) =>
+                    setEditEventForm((f) => ({ ...f, manuallyFinished: e.target.checked }))
+                  }
+                />
+                <label htmlFor="edit-manually-finished" className="text-sm text-slate-700 leading-snug">
+                  Manually marked as finished (lists under Finished events; can be cleared by unchecking)
+                </label>
               </div>
             </div>
 

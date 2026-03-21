@@ -263,6 +263,48 @@
   line-height: 1.45;
 }
 
+.community-hub-events-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.community-hub-events-section-title {
+  font-family: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0 0 1rem;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+
+.community-hub-content-page .community-hub-events-section-title {
+  color: #f8fafc;
+}
+
+.community-hub-event-finished-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin: 0 0 0.65rem;
+}
+
+a.community-hub-event-card--finished {
+  opacity: 0.92;
+}
+
+.community-hub-detail-finished-banner {
+  padding: 0.65rem 1.25rem;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid #334155;
+}
+
 .community-hub-events-grid {
   display: grid;
   gap: 1.25rem;

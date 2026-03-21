@@ -20,6 +20,12 @@ router.delete('/items/:id', authenticate, requireAdmin, adminController.adminDel
 router.get('/community-events', authenticate, requireAdmin, communityEventController.list);
 router.post('/community-events', authenticate, requireAdmin, communityEventController.create);
 router.patch('/community-events/:id', authenticate, requireAdmin, communityEventController.update);
+router.patch(
+  '/community-events/:id/mark-finished',
+  authenticate,
+  requireAdmin,
+  communityEventController.markFinished
+);
 router.delete('/community-events/:id', authenticate, requireAdmin, communityEventController.remove);
 
 module.exports = router;

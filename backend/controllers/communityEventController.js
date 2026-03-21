@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const CommunityEvent = require('../models/CommunityEvent');
+const { enrichEvent, splitUpcomingFinished } = require('../utils/communityEventStatus');
 
 const parseCloudinaryUrl = () => {
   const cloudinaryUrl = process.env.CLOUDINARY_URL;
@@ -94,8 +95,10 @@ async function deleteCloudinaryAsset(publicId, resourceType = 'image') {
 
 exports.list = async (req, res) => {
   try {
-    const events = await CommunityEvent.find().sort({ startDateTime: -1 }).lean();
-    res.status(200).json({ events });
+    const raw = await CommunityEvent.find().sort({ startDateTime: 1 }).lean();
+    const enriched = raw.map(enrichEvent);
+    const { upcoming, finished } = splitUpcomingFinished(enriched);
+    res.status(200).json({ upcoming, finished });
   } catch (err) {
     console.error('communityEvent list:', err);
     res.status(500).json({ message: 'Failed to load community events.' });
@@ -164,7 +167,7 @@ exports.create = async (req, res) => {
       contactInfo: contactInfo?.trim() || null,
     });
 
-    res.status(201).json({ message: 'Event created.', event: doc });
+    res.status(201).json({ message: 'Event created.', event: enrichEvent(doc.toObject()) });
   } catch (err) {
     console.error('communityEvent create:', err);
     res.status(500).json({ message: err.message || 'Failed to create event.' });
@@ -190,6 +193,7 @@ exports.update = async (req, res) => {
       videoData,
       videoUrl: videoUrlBody,
       contactInfo,
+      manuallyFinished,
     } = req.body;
 
     if (title !== undefined) event.title = String(title).trim();
@@ -200,6 +204,7 @@ exports.update = async (req, res) => {
     if (organizer !== undefined) event.organizer = String(organizer).trim();
     if (category !== undefined) event.category = String(category).trim();
     if (contactInfo !== undefined) event.contactInfo = contactInfo?.trim() || null;
+    if (manuallyFinished !== undefined) event.manuallyFinished = Boolean(manuallyFinished);
 
     if (bannerImageData) {
       await deleteCloudinaryAsset(event.imagePublicId, 'image');
@@ -233,10 +238,26 @@ exports.update = async (req, res) => {
     }
 
     await event.save();
-    res.status(200).json({ message: 'Event updated.', event });
+    res.status(200).json({ message: 'Event updated.', event: enrichEvent(event.toObject()) });
   } catch (err) {
     console.error('communityEvent update:', err);
     res.status(500).json({ message: err.message || 'Failed to update event.' });
+  }
+};
+
+/** Admin: mark event as finished (sets manuallyFinished). */
+exports.markFinished = async (req, res) => {
+  try {
+    const event = await CommunityEvent.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+    event.manuallyFinished = true;
+    await event.save();
+    res.status(200).json({ message: 'Event marked as finished.', event: enrichEvent(event.toObject()) });
+  } catch (err) {
+    console.error('communityEvent markFinished:', err);
+    res.status(500).json({ message: err.message || 'Failed to mark event as finished.' });
   }
 };
 

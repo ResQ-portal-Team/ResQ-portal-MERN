@@ -14,6 +14,8 @@ const CommunityEventSchema = new mongoose.Schema(
     videoUrl: { type: String, default: null },
     videoPublicId: { type: String, default: null },
     contactInfo: { type: String, default: null, trim: true },
+    /** Admin-only: treat as finished even if start date is still today or in the future */
+    manuallyFinished: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

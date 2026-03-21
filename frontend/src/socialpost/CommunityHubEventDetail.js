@@ -77,6 +77,14 @@ const CommunityHubEventDetail = () => {
 
         {!loading && !error && event && (
           <article className="community-hub-detail-article">
+            {event.finished && (
+              <div className="community-hub-detail-finished-banner" role="status">
+                Finished event
+                {event.finishedByManual && !event.finishedByDate
+                  ? ' · Closed early by admin'
+                  : ' · Start date has passed'}
+              </div>
+            )}
             <header
               className={`community-hub-detail-header${event.imageUrl ? '' : ' community-hub-detail-header--no-banner'}`}
             >

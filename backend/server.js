@@ -24,17 +24,20 @@ const authRoutes = require('./routes/authRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const CommunityEvent = require('./models/CommunityEvent');
+const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 /** Admin routes: GET /api/admin/health (no auth), then /users, /items, … (JWT + role admin) */
 app.use('/api/admin', adminRoutes);
 
-/** Public list for Community Hub (read-only) */
+/** Public list for Community Hub — upcoming vs finished (date + manual) */
 app.get('/api/community-events', async (req, res) => {
   try {
-    const events = await CommunityEvent.find().sort({ startDateTime: -1 }).lean();
-    res.status(200).json({ events });
+    const raw = await CommunityEvent.find().sort({ startDateTime: 1 }).lean();
+    const enriched = raw.map(enrichEvent);
+    const { upcoming, finished } = splitUpcomingFinished(enriched);
+    res.status(200).json({ upcoming, finished });
   } catch (err) {
     res.status(500).json({ message: 'Failed to load community events.' });
   }
@@ -51,7 +54,7 @@ app.get('/api/community-events/:id', async (req, res) => {
     if (!event) {
       return res.status(404).json({ message: 'Event not found.' });
     }
-    res.status(200).json({ event });
+    res.status(200).json({ event: enrichEvent(event) });
   } catch (err) {
     res.status(500).json({ message: 'Failed to load event.' });
   }
