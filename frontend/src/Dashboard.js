@@ -34,6 +34,14 @@ const readFileAsDataUrl = (file) =>
 
 const normalizeStatus = (status) => (status === 'returned' ? 'returned' : 'active');
 
+const getStoredToken = () => {
+  const token = localStorage.getItem('resqToken');
+  if (!token || token === 'null' || token === 'undefined') {
+    return '';
+  }
+  return token;
+};
+
 const formatItemDate = (value) => {
   if (!value) {
     return 'Just now';
@@ -89,31 +97,24 @@ const Dashboard = () => {
       ...options,
     };
 
-    let lastError;
+    try {
+      const response = await fetch(path, requestOptions);
+      const data = await parseResponseBody(response);
 
-    for (const baseUrl of ['', 'http://localhost:5000']) {
-      try {
-        const response = await fetch(`${baseUrl}${path}`, requestOptions);
-        const data = await parseResponseBody(response);
-
-        if (!response.ok) {
-          const error = new Error(data?.message || 'Request failed.');
-          error.status = response.status;
-          error.data = data;
-          throw error;
-        }
-
-        return data;
-      } catch (error) {
-        lastError = error;
-
-        if (error.status || baseUrl === 'http://localhost:5000') {
-          break;
-        }
+      if (!response.ok) {
+        const error = new Error(data?.message || 'Request failed.');
+        error.status = response.status;
+        error.data = data;
+        throw error;
       }
-    }
 
-    throw lastError || new Error('Request failed.');
+      return data;
+    } catch (error) {
+      if (!error.status) {
+        throw new Error('Unable to reach the server. Please check that the backend is running.');
+      }
+      throw error;
+    }
   };
 
   useEffect(() => {
@@ -232,7 +233,14 @@ const Dashboard = () => {
 
     try {
       setReportLoading(true);
-      const token = localStorage.getItem('resqToken');
+      const token = getStoredToken();
+      if (!token) {
+        setShowReportModal(false);
+        setPendingProtectedAction('report');
+        setShowLogin(true);
+        setReportError('Your session expired. Please sign in again.');
+        return;
+      }
       const payload = {
         title: reportForm.title.trim(),
         description: reportForm.description.trim(),
@@ -260,6 +268,13 @@ const Dashboard = () => {
       setActiveTab('active');
       handleReportModalClose();
     } catch (error) {
+      if (error.status === 401) {
+        handleLogout();
+        setPendingProtectedAction('report');
+        setShowLogin(true);
+        setReportError('Your session expired. Please sign in again.');
+        return;
+      }
       setReportError(error.message || 'Unable to report this item.');
     } finally {
       setReportLoading(false);
@@ -267,7 +282,7 @@ const Dashboard = () => {
   };
 
   const handleMarkAsReturned = async (itemId) => {
-    const token = localStorage.getItem('resqToken');
+    const token = getStoredToken();
 
     if (!token) {
       setPendingProtectedAction('');
@@ -289,6 +304,12 @@ const Dashboard = () => {
       setItemsNotice(data.message || 'Item marked as returned.');
       setActiveTab('returned');
     } catch (error) {
+      if (error.status === 401) {
+        handleLogout();
+        setItemsError('Your session expired. Please sign in again.');
+        setShowLogin(true);
+        return;
+      }
       setItemsError(error.message || 'Unable to update item status.');
     } finally {
       setActionItemId('');
@@ -296,7 +317,7 @@ const Dashboard = () => {
   };
 
   const handleDeleteReturnedItem = async (itemId) => {
-    const token = localStorage.getItem('resqToken');
+    const token = getStoredToken();
 
     if (!token) {
       setShowLogin(true);
@@ -316,6 +337,12 @@ const Dashboard = () => {
       setItemsError('');
       setItemsNotice(data.message || 'Returned item deleted successfully.');
     } catch (error) {
+      if (error.status === 401) {
+        handleLogout();
+        setItemsError('Your session expired. Please sign in again.');
+        setShowLogin(true);
+        return;
+      }
       setItemsError(error.message || 'Unable to delete the item.');
     } finally {
       setActionItemId('');

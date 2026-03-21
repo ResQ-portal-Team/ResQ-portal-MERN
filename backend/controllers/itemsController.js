@@ -1,7 +1,14 @@
 const crypto = require('crypto');
+const https = require('https');
 const Item = require('../models/Item');
 
 const ACTIVE_STATUSES = ['active', 'pending'];
+
+const createHttpError = (message, statusCode) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
 
 const parseCloudinaryUrl = () => {
     const cloudinaryUrl = process.env.CLOUDINARY_URL;
@@ -10,7 +17,12 @@ const parseCloudinaryUrl = () => {
         return null;
     }
 
-    const parsedUrl = new URL(cloudinaryUrl);
+    let parsedUrl;
+    try {
+        parsedUrl = new URL(cloudinaryUrl);
+    } catch (error) {
+        return null;
+    }
 
     return {
         cloudName: parsedUrl.hostname,
@@ -18,6 +30,54 @@ const parseCloudinaryUrl = () => {
         apiSecret: parsedUrl.password
     };
 };
+
+const postForm = (urlString, formParams) =>
+    new Promise((resolve, reject) => {
+        const url = new URL(urlString);
+        const body = formParams.toString();
+
+        const request = https.request(
+            {
+                hostname: url.hostname,
+                path: `${url.pathname}${url.search}`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Length': Buffer.byteLength(body)
+                }
+            },
+            (response) => {
+                let responseBody = '';
+
+                response.on('data', (chunk) => {
+                    responseBody += chunk;
+                });
+
+                response.on('end', () => {
+                    let data = {};
+
+                    try {
+                        data = responseBody ? JSON.parse(responseBody) : {};
+                    } catch (error) {
+                        return reject(createHttpError('Invalid response from image service.', 502));
+                    }
+
+                    if (response.statusCode < 200 || response.statusCode >= 300) {
+                        return reject(createHttpError(data?.error?.message || 'Image upload failed.', 502));
+                    }
+
+                    return resolve(data);
+                });
+            }
+        );
+
+        request.on('error', () => {
+            reject(createHttpError('Unable to reach image service.', 502));
+        });
+
+        request.write(body);
+        request.end();
+    });
 
 const uploadImageToCloudinary = async (imageData) => {
     if (!imageData) {
@@ -27,7 +87,7 @@ const uploadImageToCloudinary = async (imageData) => {
     const credentials = parseCloudinaryUrl();
 
     if (!credentials) {
-        throw new Error('Cloudinary is not configured.');
+        throw createHttpError('Image upload is unavailable. Cloudinary is not configured.', 503);
     }
 
     const timestamp = Math.floor(Date.now() / 1000);
@@ -43,16 +103,7 @@ const uploadImageToCloudinary = async (imageData) => {
         signature
     });
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${credentials.cloudName}/image/upload`, {
-        method: 'POST',
-        body
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data?.error?.message || 'Image upload failed.');
-    }
+    const data = await postForm(`https://api.cloudinary.com/v1_1/${credentials.cloudName}/image/upload`, body);
 
     return {
         url: data.secure_url,
@@ -82,10 +133,7 @@ const deleteImageFromCloudinary = async (publicId) => {
         signature
     });
 
-    await fetch(`https://api.cloudinary.com/v1_1/${credentials.cloudName}/image/destroy`, {
-        method: 'POST',
-        body
-    });
+    await postForm(`https://api.cloudinary.com/v1_1/${credentials.cloudName}/image/destroy`, body);
 };
 
 const buildStatusFilter = (status) => {
@@ -135,8 +183,13 @@ exports.createItem = async (req, res) => {
         }
 
         let imageUpload = null;
+        let imageWarning = '';
         if (req.body.imageData) {
-            imageUpload = await uploadImageToCloudinary(req.body.imageData);
+            try {
+                imageUpload = await uploadImageToCloudinary(req.body.imageData);
+            } catch (error) {
+                imageWarning = error.message || 'Image upload failed.';
+            }
         }
 
         const newItem = await Item.create({
@@ -157,15 +210,17 @@ exports.createItem = async (req, res) => {
         }));
 
         return res.status(201).json({
-            message: match
+            message: `${match
                 ? 'Item reported successfully and a potential match was found.'
-                : 'Item reported successfully.',
+                : 'Item reported successfully.'}${imageWarning ? ` ${imageWarning}` : ''}`,
             item: savedItem,
             matchFound: Boolean(match),
             matchedItem: match || null
         });
     } catch (error) {
-        return res.status(500).json({ message: error.message || 'Failed to create item.' });
+        const statusCode = error.statusCode || 500;
+        console.error('Create item error:', error);
+        return res.status(statusCode).json({ message: error.message || 'Failed to create item.' });
     }
 };
 
@@ -215,14 +270,20 @@ exports.updateItem = async (req, res) => {
         }
 
         if (req.body.imageData) {
-            const uploadedImage = await uploadImageToCloudinary(req.body.imageData);
+            try {
+                const uploadedImage = await uploadImageToCloudinary(req.body.imageData);
 
-            if (item.imagePublicId) {
-                await deleteImageFromCloudinary(item.imagePublicId);
+                if (item.imagePublicId) {
+                    await deleteImageFromCloudinary(item.imagePublicId);
+                }
+
+                item.image = uploadedImage.url;
+                item.imagePublicId = uploadedImage.publicId;
+            } catch (error) {
+                return res.status(error.statusCode || 502).json({
+                    message: error.message || 'Unable to upload the new image.'
+                });
             }
-
-            item.image = uploadedImage.url;
-            item.imagePublicId = uploadedImage.publicId;
         }
 
         item.title = payload.title;
@@ -236,7 +297,9 @@ exports.updateItem = async (req, res) => {
         const updatedItem = await populateItemQuery(Item.findById(item._id));
         return res.status(200).json({ message: 'Item updated successfully.', item: updatedItem });
     } catch (error) {
-        return res.status(500).json({ message: error.message || 'Failed to update item.' });
+        const statusCode = error.statusCode || 500;
+        console.error('Update item error:', error);
+        return res.status(statusCode).json({ message: error.message || 'Failed to update item.' });
     }
 };
 
