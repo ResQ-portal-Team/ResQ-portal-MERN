@@ -7,19 +7,64 @@
 
 .community-hub-hero {
   position: relative;
+  overflow: hidden;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* Layer: tint, optional photo, fallback gradient */
   background-color: #1a365d;
-  background-image:
-    linear-gradient(rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.42)),
-    var(--hub-hero-image, none),
-    linear-gradient(160deg, #0f2942 0%, #1e4976 45%, #2d5a8c 100%);
+  /* Fallback when image is missing or still loading */
+  background-image: linear-gradient(160deg, #0f2942 0%, #1e4976 45%, #2d5a8c 100%);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  /* Exit: move up + fade; delay only before motion (match HERO_EXIT_MS in JS) */
+  --hub-exit-delay: 0.2s;
+  --hub-exit-duration: 0.5s;
+  transition:
+    opacity var(--hub-exit-duration) cubic-bezier(0.22, 1, 0.36, 1),
+    transform var(--hub-exit-duration) cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 0s;
 }
+
+.community-hub-hero--exiting {
+  opacity: 0;
+  transform: translateY(-48px);
+  pointer-events: none;
+  transition-delay: var(--hub-exit-delay);
+}
+
+.community-hub-hero--exiting .community-hub-title-chevron {
+  transform: rotate(180deg);
+  transition-delay: var(--hub-exit-delay);
+}
+
+/* Blurred photo (sharp text/UI sits above via z-index on children) */
+.community-hub-hero::before {
+  content: '';
+  position: absolute;
+  /* Negative inset + scale hides blur edge halos */
+  inset: -28px;
+  z-index: 0;
+  background-image: var(--hub-hero-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(3px);
+  -webkit-filter: blur(3px);
+  transform: scale(1.07);
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.community-hub-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.42));
+  pointer-events: none;
+}
+
 
 .community-hub-nav {
   position: absolute;
@@ -28,77 +73,23 @@
   right: 0;
   z-index: 20;
   background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   color: #fff;
   font-family: 'Open Sans', system-ui, sans-serif;
+}
+
+/* Same header on /community-hub/content — stays at top while scrolling */
+.community-hub-nav.community-hub-nav--sticky {
+  position: sticky;
+  top: 0;
+  width: 100%;
 }
 
 .community-hub-nav-inner {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0.65rem 1.25rem 0.85rem;
-}
-
-.community-hub-nav-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem 1rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.community-hub-nav-top a {
-  color: rgba(255, 255, 255, 0.92);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.community-hub-nav-top a:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-.community-hub-nav-top-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-size: inherit;
-  letter-spacing: inherit;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.92);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.community-hub-nav-top-btn:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-.community-hub-info-label {
-  color: rgba(255, 255, 255, 0.65);
-  margin-right: 0.25rem;
-}
-
-.community-hub-nav-top-links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem 1rem;
-}
-
-.community-hub-search {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  cursor: default;
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .community-hub-nav-main {
@@ -153,14 +144,68 @@
 }
 
 .community-hub-hero-center {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 7rem 1.25rem 6rem;
-  z-index: 1;
+  padding: 7rem 1.25rem 5rem;
+  z-index: 2;
+}
+
+.community-hub-title-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.community-hub-title-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.35rem, 1.5vw, 1rem);
+  flex-wrap: nowrap;
+}
+
+.community-hub-title-dropdown {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.15em;
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 0.2em;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.community-hub-title-dropdown:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.community-hub-title-dropdown:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.community-hub-title-dropdown:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+}
+
+.community-hub-title-chevron {
+  width: clamp(1.75rem, 5vw, 3.25rem);
+  height: clamp(1.75rem, 5vw, 3.25rem);
+  transition: transform var(--hub-exit-duration, 0.5s) cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 0s;
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.4));
 }
 
 .community-hub-hero-title {
@@ -171,6 +216,7 @@
   color: #fff;
   letter-spacing: -0.02em;
   text-shadow: 0 4px 32px rgba(0, 0, 0, 0.45);
+  margin: 0;
 }
 
 .community-hub-hero-tagline {
@@ -183,78 +229,23 @@
   text-transform: uppercase;
 }
 
-.community-hub-explore {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem 1.25rem;
-  margin: 0;
-  width: 100%;
-  box-sizing: border-box;
-  border: none;
-  background: #0066b3;
-  color: #fff;
-  font-family: 'Open Sans', system-ui, sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.community-hub-explore:hover {
-  background: #005499;
-  color: #fff;
-}
-
-.community-hub-explore:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: -4px;
-}
-
-.community-hub-chevron {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  transition: transform 0.28s ease;
-}
-
-.community-hub-explore.is-open .community-hub-chevron {
-  transform: rotate(180deg);
-}
-
-.community-hub-details-wrap {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.38s ease;
-}
-
-.community-hub-details-wrap.is-open {
-  grid-template-rows: 1fr;
-}
-
-.community-hub-details-inner {
-  overflow: hidden;
-  min-height: 0;
-}
-
 .community-hub-content {
   max-width: 72rem;
   margin: 0 auto;
   padding: 2.5rem 1rem 3rem;
 }
 
-@media (max-width: 640px) {
-  .community-hub-nav-top {
-    justify-content: flex-start;
-  }
+.community-hub-content--empty {
+  min-height: 50vh;
+}
 
+/* Hub posts page — no entrance animation (hero exit only) */
+.community-hub-content-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+@media (max-width: 640px) {
   .community-hub-main-links {
     gap: 0.45rem 0.75rem;
     font-size: 0.75rem;

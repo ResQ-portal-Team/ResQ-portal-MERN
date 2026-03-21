@@ -5,7 +5,9 @@ import ChatBot from './ChatBot';
 import Dashboard from './Dashboard';
 import LandingPage from './LandingPage'; // Make sure you have created LandingPage.js
 import CommunityHub from './socialpost/CommunityHub';
+import CommunityHubContent from './socialpost/CommunityHubContent';
 import ReportItem from './ReportItem';
+import AdminLogin from './AdminLogin';
 
 function App() {
   return (
@@ -13,6 +15,9 @@ function App() {
       <Routes>
         {/* The professional Entry Point of the site */}
         <Route path="/" element={<LandingPage />} />
+
+        {/* Admin login (hardcoded admin — no registration) */}
+        <Route path="/login" element={<AdminLogin />} />
         
         {/* AI Assistant Registration - Dedicated for new users */}
         <Route path="/onboarding" element={
@@ -28,8 +33,9 @@ function App() {
         {/* The Main Application Dashboard */}
         <Route path="/dashboard" element={<Dashboard />} />
 
-        {/* Community Hub Page */}
+        {/* Community Hub — landing hero, then /community-hub/content for posts */}
         <Route path="/community-hub" element={<CommunityHub />} />
+        <Route path="/community-hub/content" element={<CommunityHubContent />} />
 
         {/* Report Item Page */}
         <Route path="/report-item" element={<ReportItem />} />

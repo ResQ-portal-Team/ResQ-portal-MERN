@@ -3,6 +3,13 @@ const Item = require('../models/Item');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+const ADMIN_EMAIL = 'admin@my.sliit.lk';
+const ADMIN_PASSWORD = '123456';
+
+function normalizeEmail(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
 // Check if Student ID, Email or Nickname already exists
 exports.checkExisting = async (req, res) => {
     try {
@@ -10,6 +17,13 @@ exports.checkExisting = async (req, res) => {
 
         if (!value || value.trim() === "") {
             return res.status(400).json({ message: "Input cannot be empty" });
+        }
+
+        if (field === 'email' && normalizeEmail(value) === normalizeEmail(ADMIN_EMAIL)) {
+            return res.status(400).json({
+                exists: true,
+                message: 'This email address is reserved.',
+            });
         }
 
         const user = await User.findOne({ [field]: value });
@@ -41,6 +55,10 @@ exports.checkExisting = async (req, res) => {
 exports.register = async (req, res) => {
     try {
         const { studentId, realName, email, nickname, password } = req.body;
+
+        if (normalizeEmail(email) === normalizeEmail(ADMIN_EMAIL)) {
+            return res.status(400).json({ message: 'This email is reserved for administrator access.' });
+        }
 
         const existingUser = await User.findOne({ 
             $or: [{ email }, { studentId }, { nickname }] 
@@ -92,50 +110,53 @@ exports.getStats = async (req, res) => {
     }
 };
 
-// Login user
+// Admin login only — hardcoded credentials; JWT payload { email, role: "admin" }
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "dev_jwt_secret_change_me" : null);
+        const emailRaw = req.body?.email;
+        const passwordRaw = req.body?.password;
+        const email = emailRaw != null ? String(emailRaw).trim() : '';
+        const password = passwordRaw != null ? String(passwordRaw) : '';
+
+        const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev_jwt_secret_change_me' : null);
 
         if (!jwtSecret) {
-            console.error("Login Error: JWT_SECRET is not configured.");
-            return res.status(500).json({ message: "Server configuration error. Please contact support." });
+            console.error('Login Error: JWT_SECRET is not configured.');
+            return res.status(500).json({ message: 'Server configuration error. Please contact support.' });
         }
 
         if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required." });
+            return res.status(400).json({ message: 'Email and password are required.' });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: "Invalid email or password." });
-        }
+        const emailOk = normalizeEmail(email) === normalizeEmail(ADMIN_EMAIL);
+        const passwordOk = password === ADMIN_PASSWORD;
 
-        const isPasswordMatch = await bcrypt.compare(password, user.password);
-        if (!isPasswordMatch) {
-            return res.status(400).json({ message: "Invalid email or password." });
+        if (!emailOk || !passwordOk) {
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const token = jwt.sign(
-            { id: user._id, email: user.email, nickname: user.nickname },
+            { email: ADMIN_EMAIL, role: 'admin' },
             jwtSecret,
             { expiresIn: '7d' }
         );
 
         res.status(200).json({
-            message: "Login successful.",
+            message: 'Login successful',
             token,
+            role: 'admin',
+            email: ADMIN_EMAIL,
             user: {
-                id: user._id,
-                studentId: user.studentId,
-                realName: user.realName,
-                email: user.email,
-                nickname: user.nickname
-            }
+                email: ADMIN_EMAIL,
+                role: 'admin',
+                nickname: 'Admin',
+                realName: 'Administrator',
+                studentId: '—',
+            },
         });
     } catch (err) {
-        console.error("Login Error:", err);
-        res.status(500).json({ message: "Server error during login." });
+        console.error('Login Error:', err);
+        res.status(500).json({ message: 'Server error during login.' });
     }
 };
