@@ -9,6 +9,8 @@ const Dashboard = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const stats = [];
+  const recentPosts = [];
 
   useEffect(() => {
     const storedUser = localStorage.getItem('resqUser');
@@ -131,18 +133,18 @@ const Dashboard = () => {
 
       {/* Stats Cards Section */}
       <div className="max-w-6xl mx-auto -mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 px-4 relative z-20">
-        {[
-          { label: 'Items Reported', value: '1,247', icon: '📦', color: 'text-blue-600' },
-          { label: 'Items Returned', value: '893', icon: '📈', color: 'text-green-600' },
-          { label: 'Trust Score Avg', value: '87%', icon: '🛡️', color: 'text-yellow-600' },
-          { label: 'Events This Month', value: '12', icon: '📅', color: 'text-purple-600' }
-        ].map((stat, idx) => (
+        {stats.map((stat, idx) => (
           <div key={idx} className="bg-white p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-shadow border border-gray-100 flex flex-col items-center text-center">
             <div className="text-3xl mb-3">{stat.icon}</div>
             <div className={`text-3xl font-black ${stat.color}`}>{stat.value}</div>
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{stat.label}</div>
           </div>
         ))}
+        {stats.length === 0 && (
+          <div className="col-span-2 md:col-span-4 bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-center text-gray-500 font-medium">
+            No statistics available yet.
+          </div>
+        )}
       </div>
 
       {/* Recent Posts Section */}
@@ -157,22 +159,13 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* Example Item Grid */}
+        {/* Item Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 hover:shadow-2xl transition-all group duration-300">
-            <div className="relative h-56 bg-gray-100 overflow-hidden">
-              <span className="absolute top-4 left-4 z-10 bg-red-500 text-white text-[10px] uppercase font-black px-3 py-1 rounded-full tracking-tighter">Lost</span>
-              <div className="w-full h-full bg-[url('https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&q=80')] bg-cover bg-center group-hover:scale-110 transition-transform duration-500"></div>
+          {recentPosts.length === 0 && (
+            <div className="md:col-span-2 lg:col-span-3 bg-white rounded-3xl shadow-md border border-gray-100 p-10 text-center text-gray-500 font-medium">
+              No recent posts yet.
             </div>
-            <div className="p-6">
-              <h3 className="font-bold text-xl text-gray-800 mb-2">MacBook Pro Charger</h3>
-              <p className="text-sm text-gray-600 mb-6 leading-relaxed line-clamp-2">White 67W USB-C charger, left in the computer lab during the afternoon session.</p>
-              <div className="flex justify-between items-center pt-4 border-t border-gray-50">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Lab A3</span>
-                <button className="text-blue-600 text-sm font-black hover:underline transition-all">VIEW DETAILS</button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
