@@ -9,8 +9,11 @@ const Dashboard = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const stats = [];
-  const recentPosts = [];
+  const [recentPosts, setRecentPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsError, setPostsError] = useState('');
+  const [stats, setStats] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('resqUser');
@@ -22,6 +25,75 @@ const Dashboard = () => {
       localStorage.removeItem('resqUser');
       localStorage.removeItem('resqToken');
     }
+  }, []);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setStatsLoading(true);
+        let response;
+
+        try {
+          response = await fetch('/api/auth/stats');
+        } catch (primaryError) {
+          response = await fetch('http://localhost:5000/api/auth/stats');
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+          return;
+        }
+
+        const mappedStats = [
+          { icon: '📦', value: data?.reported ?? 0, label: 'Reported', color: 'text-blue-600' },
+          { icon: '✅', value: data?.returned ?? 0, label: 'Returned', color: 'text-green-600' },
+          { icon: '📊', value: data?.trustScore ?? '0%', label: 'Trust Score', color: 'text-purple-600' },
+          { icon: '🕒', value: data?.events ?? 0, label: 'Active Cases', color: 'text-amber-600' },
+        ];
+        setStats(mappedStats);
+      } catch (error) {
+        setStats([]);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const fetchRecentPosts = async () => {
+      try {
+        setPostsLoading(true);
+        setPostsError('');
+        let response;
+
+        try {
+          response = await fetch('/api/items');
+        } catch (primaryError) {
+          response = await fetch('http://localhost:5000/api/items');
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+          setPostsError(data?.error || data?.message || 'Failed to load recent posts.');
+          return;
+        }
+
+        const normalizedItems = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+            ? data.items
+            : [];
+        setRecentPosts(normalizedItems);
+      } catch (error) {
+        setPostsError('Cannot load recent posts. Please make sure backend is running on port 5000.');
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    fetchRecentPosts();
   }, []);
 
   const handleLoginInputChange = (e) => {
@@ -124,7 +196,10 @@ const Dashboard = () => {
             <button className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg">
               🔍 Browse Items
             </button>
-            <button className="bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 px-8 py-4 rounded-xl font-bold text-lg transition-all">
+            <button
+              onClick={() => navigate('/report-item')}
+              className="bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 px-8 py-4 rounded-xl font-bold text-lg transition-all"
+            >
               Report an Item →
             </button>
           </div>
@@ -140,7 +215,12 @@ const Dashboard = () => {
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{stat.label}</div>
           </div>
         ))}
-        {stats.length === 0 && (
+        {statsLoading && (
+          <div className="col-span-2 md:col-span-4 bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-center text-gray-500 font-medium">
+            Loading statistics...
+          </div>
+        )}
+        {!statsLoading && stats.length === 0 && (
           <div className="col-span-2 md:col-span-4 bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-center text-gray-500 font-medium">
             No statistics available yet.
           </div>
@@ -161,7 +241,36 @@ const Dashboard = () => {
 
         {/* Item Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {recentPosts.length === 0 && (
+          {postsLoading && (
+            <div className="md:col-span-2 lg:col-span-3 bg-white rounded-3xl shadow-md border border-gray-100 p-10 text-center text-gray-500 font-medium">
+              Loading recent posts...
+            </div>
+          )}
+          {!postsLoading && postsError && (
+            <div className="md:col-span-2 lg:col-span-3 bg-white rounded-3xl shadow-md border border-red-100 p-10 text-center text-red-600 font-medium">
+              {postsError}
+            </div>
+          )}
+          {!postsLoading && !postsError && recentPosts.map((post) => (
+            <div key={post._id} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-md hover:shadow-lg transition">
+              <div className="flex items-center justify-between mb-3">
+                <span className={`text-xs font-bold uppercase tracking-wide px-3 py-1 rounded-full ${post.type === 'found' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  {post.type}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {post.date ? new Date(post.date).toISOString().slice(0, 10) : 'No date'}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">{post.title}</h3>
+              <p className="text-sm text-gray-600 mb-4 line-clamp-3">{post.description}</p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p><span className="font-semibold text-gray-700">Category:</span> {post.category}</p>
+                <p><span className="font-semibold text-gray-700">Location:</span> {post.location}</p>
+                <p><span className="font-semibold text-gray-700">By:</span> {post?.postedBy?.nickname || post?.postedBy?.realName || 'Unknown'}</p>
+              </div>
+            </div>
+          ))}
+          {!postsLoading && !postsError && recentPosts.length === 0 && (
             <div className="md:col-span-2 lg:col-span-3 bg-white rounded-3xl shadow-md border border-gray-100 p-10 text-center text-gray-500 font-medium">
               No recent posts yet.
             </div>

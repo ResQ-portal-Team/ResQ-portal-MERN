@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Item = require('../models/Item');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -72,11 +73,19 @@ exports.register = async (req, res) => {
 // Get stats for dashboard
 exports.getStats = async (req, res) => {
     try {
+        const reported = await Item.countDocuments();
+        const returned = await Item.countDocuments({ status: 'returned' });
+        const pending = await Item.countDocuments({ status: 'pending' });
+        const totalUsers = await User.countDocuments();
+
+        const trustScoreValue = reported > 0 ? Math.round((returned / reported) * 100) : 0;
+
         res.status(200).json({
-            reported: 0,
-            returned: 0,
-            trustScore: "95%",
-            events: 5
+            reported,
+            returned,
+            trustScore: `${trustScoreValue}%`,
+            events: pending,
+            users: totalUsers
         });
     } catch (err) {
         res.status(500).json({ message: "Error fetching statistics." });

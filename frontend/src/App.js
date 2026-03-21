@@ -5,6 +5,7 @@ import ChatBot from './ChatBot';
 import Dashboard from './Dashboard';
 import LandingPage from './LandingPage'; // Make sure you have created LandingPage.js
 import CommunityHub from './socialpost/CommunityHub';
+import ReportItem from './ReportItem';
 
 function App() {
   return (
@@ -29,6 +30,9 @@ function App() {
 
         {/* Community Hub Page */}
         <Route path="/community-hub" element={<CommunityHub />} />
+
+        {/* Report Item Page */}
+        <Route path="/report-item" element={<ReportItem />} />
       </Routes>
     </Router>
   );
