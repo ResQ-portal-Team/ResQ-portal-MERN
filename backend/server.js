@@ -1,7 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const path = require('path');
 // const cors = require('cors'); // අනවශ්‍යයි, මම මේක comment කළා (ඕනනම් අයින් කරලා දාන්න)
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 
