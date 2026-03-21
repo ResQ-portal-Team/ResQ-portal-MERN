@@ -1,23 +1,31 @@
 const express = require('express');
 const mongoose = require('mongoose');
-// const cors = require('cors'); // අනවශ්‍යයි, මම මේක comment කළා (ඕනනම් අයින් කරලා දාන්න)
 require('dotenv').config();
 
-const app = express();
-
-// --- Middleware ---
-// app.use(cors()); // Proxy එක පාවිච්චි කරන නිසා CORS දැන් අත්‍යවශ්‍ය නැහැ
-app.use(express.json());
-
-// --- Routes ---
 const authRoutes = require('./routes/authRoutes');
 const itemRoutes = require('./routes/itemRoutes');
+
+const app = express();
+const requestBodyLimit = '25mb';
+
+app.use(express.json({ limit: requestBodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 
-// --- MongoDB Connection ---
-const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/resq_portal";
+app.use((err, req, res, next) => {
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({
+      message: 'The selected image is too large. Please choose a smaller image and try again.'
+    });
+  }
+
+  return next(err);
+});
+
+const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/resq_portal';
+
 
 mongoose.connect(uri)
     .then(() => {
