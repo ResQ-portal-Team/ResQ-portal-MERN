@@ -11,6 +11,7 @@ const ItemSchema = new mongoose.Schema({
     location: { type: String, required: true },
     image: { type: String }, // URL or filename for the uploaded image
     imagePublicId: { type: String, default: null },
+    imageTags: { type: [String], default: [] }, // Keywords used for AI-assisted matching
     date: { type: Date, default: Date.now },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     // Legacy "pending" values are treated as active items in the UI and routes.
