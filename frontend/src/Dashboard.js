@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ITEM_CATEGORY_GROUPS } from './itemCategories';
 
 const createInitialReportForm = () => ({
   title: '',
@@ -7,8 +8,20 @@ const createInitialReportForm = () => ({
   type: 'lost',
   category: '',
   location: '',
+  incidentDate: '',
   imageFile: null,
 });
+
+const countWords = (text) => {
+  if (!text || typeof text !== 'string') return 0;
+  return text.trim().split(/\s+/).filter(Boolean).length;
+};
+
+/** Today as YYYY-MM-DD in the browser local calendar (for date input max). */
+const todayIsoDateLocal = () => {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
 
 const parseResponseBody = async (response) => {
   const responseText = await response.text();
@@ -230,6 +243,16 @@ const Dashboard = () => {
       return;
     }
 
+    if (!reportForm.incidentDate) {
+      setReportError(reportForm.type === 'found' ? 'Please select the date the item was found.' : 'Please select the date the item was lost.');
+      return;
+    }
+
+    if (reportForm.incidentDate > todayIsoDateLocal()) {
+      setReportError('Date must be today or in the past, not in the future.');
+      return;
+    }
+
     try {
       setReportLoading(true);
       const token = localStorage.getItem('resqToken');
@@ -239,6 +262,7 @@ const Dashboard = () => {
         type: reportForm.type,
         category: reportForm.category.trim(),
         location: reportForm.location.trim(),
+        eventDate: reportForm.incidentDate,
       };
 
       if (reportForm.imageFile) {
@@ -369,6 +393,13 @@ const Dashboard = () => {
             onClick={() => navigate('/contact')}
           >
             Contact Us
+          </button>
+          <button
+            type="button"
+            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            onClick={() => navigate('/about')}
+          >
+            About Us
           </button>
           {currentUser ? (
             <button
@@ -561,8 +592,14 @@ const Dashboard = () => {
                         </span>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <span>Date</span>
-                        <span className="font-semibold text-gray-700 text-right">{formatItemDate(item.createdAt || item.date)}</span>
+                        <span>{item.type === 'found' ? 'Date found' : 'Date lost'}</span>
+                        <span className="font-semibold text-gray-700 text-right">
+                          {item.date ? formatItemDate(item.date) : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-4 text-xs text-gray-400">
+                        <span>Listed</span>
+                        <span className="text-right">{formatItemDate(item.createdAt)}</span>
                       </div>
                     </div>
                     <div className="flex justify-between items-center pt-5 mt-5 border-t border-gray-100">
@@ -632,15 +669,38 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
-                  <input
-                    type="text"
+                  <select
                     name="category"
                     value={reportForm.category}
                     onChange={handleReportFormChange}
-                    placeholder="Wallet, ID card, laptop..."
                     className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
-                  />
+                  >
+                    <option value="">Select a category</option>
+                    {ITEM_CATEGORY_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.options.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  {reportForm.type === 'found' ? 'Date found' : 'Date lost'}
+                </label>
+                <input
+                  type="date"
+                  name="incidentDate"
+                  value={reportForm.incidentDate}
+                  max={todayIsoDateLocal()}
+                  onChange={handleReportFormChange}
+                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                />
               </div>
 
               <div>
@@ -671,11 +731,11 @@ const Dashboard = () => {
                 <label className="block text-sm font-bold text-gray-700 mb-2">Description</label>
                 <textarea
                   name="description"
-                  rows="4"
+                  rows="5"
                   value={reportForm.description}
                   onChange={handleReportFormChange}
                   placeholder="Add identifying details that help other students recognize the item."
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all resize-none"
+                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all resize-y min-h-[120px]"
                 />
               </div>
 

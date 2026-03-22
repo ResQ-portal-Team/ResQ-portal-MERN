@@ -66,13 +66,22 @@ const ContactUs = () => {
           <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
           <span className="text-xl font-bold text-gray-800 tracking-tight text-center">Portal</span>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="text-gray-600 font-medium hover:text-blue-600 transition"
-        >
-          Back to Dashboard
-        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            onClick={() => navigate('/about')}
+            className="text-gray-600 font-medium hover:text-blue-600 transition"
+          >
+            About Us
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className="text-gray-600 font-medium hover:text-blue-600 transition"
+          >
+            Back to Dashboard
+          </button>
+        </div>
       </nav>
 
       <div className="max-w-3xl mx-auto p-6">

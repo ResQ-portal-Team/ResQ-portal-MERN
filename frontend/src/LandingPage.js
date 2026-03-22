@@ -50,21 +50,30 @@ const LandingPage = () => {
              <button onClick={() => scrollToSection('stats')} className="hover:text-blue-600 transition-colors">Stats</button>
           </div>
 
-          {currentUser ? (
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => setShowProfile(true)}
-              className="bg-gray-900 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-all shadow-md"
+              type="button"
+              onClick={() => navigate('/about')}
+              className="border-2 border-gray-200 text-gray-800 px-4 sm:px-5 py-2 rounded-full font-bold text-sm sm:text-base hover:border-blue-600 hover:text-blue-600 transition-all shadow-sm bg-white/80"
             >
-              My Profile
+              About Us
             </button>
-          ) : (
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="bg-gray-900 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition-all shadow-md"
-            >
-              Login
-            </button>
-          )}
+            {currentUser ? (
+              <button
+                onClick={() => setShowProfile(true)}
+                className="bg-gray-900 text-white px-4 sm:px-6 py-2 rounded-full font-bold text-sm sm:text-base hover:bg-blue-600 transition-all shadow-md"
+              >
+                My Profile
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="bg-gray-900 text-white px-4 sm:px-6 py-2 rounded-full font-bold text-sm sm:text-base hover:bg-blue-600 transition-all shadow-md"
+              >
+                Login
+              </button>
+            )}
+          </div>
         </div>
       </nav>
 

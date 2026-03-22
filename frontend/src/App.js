@@ -13,6 +13,7 @@ import AdminDashboard from './AdminDashboard';
 import ProtectedAdminRoute from './ProtectedAdminRoute';
 import ItemDetailPage from './ItemDetailPage';
 import ContactUs from './ContactUs';
+import AboutUs from './AboutUs';
 
 function App() {
   return (
@@ -60,6 +61,8 @@ function App() {
 
         {/* Contact Us */}
         <Route path="/contact" element={<ContactUs />} />
+
+        <Route path="/about" element={<AboutUs />} />
       </Routes>
     </Router>
   );

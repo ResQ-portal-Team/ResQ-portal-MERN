@@ -11,7 +11,8 @@ const ItemSchema = new mongoose.Schema({
     location: { type: String, required: true },
     image: { type: String }, // URL or filename for the uploaded image
     imagePublicId: { type: String, default: null },
-    date: { type: Date, default: Date.now },
+    /** Date the item was lost or found (user-provided). */
+    date: { type: Date },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     // Legacy "pending" values are treated as active items in the UI and routes.
     status: { type: String, enum: ['active', 'pending', 'returned'], default: 'active' },
