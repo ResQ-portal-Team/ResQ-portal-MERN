@@ -12,11 +12,6 @@ const createInitialReportForm = () => ({
   imageFile: null,
 });
 
-const countWords = (text) => {
-  if (!text || typeof text !== 'string') return 0;
-  return text.trim().split(/\s+/).filter(Boolean).length;
-};
-
 /** Today as YYYY-MM-DD in the browser local calendar (for date input max). */
 const todayIsoDateLocal = () => {
   const t = new Date();
@@ -375,28 +370,28 @@ const Dashboard = () => {
   const foundItemsCount = items.filter((item) => item.type === 'found').length;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <nav className="bg-white shadow-sm p-4 flex justify-between items-center px-8 sticky top-0 z-50">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
+      <nav className="flex items-center justify-between border-b border-gray-100 bg-white p-4 px-8 shadow-sm dark:border-slate-800 dark:bg-slate-900 sticky top-0 z-50">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
-          <span className="text-xl font-bold text-gray-800 tracking-tight text-center">Portal</span>
+          <span className="text-xl font-bold text-gray-800 tracking-tight text-center dark:text-slate-100">Portal</span>
         </div>
         <div className="flex items-center gap-6">
           <button
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
             onClick={() => navigate('/community-hub')}
           >
             Community Hub
           </button>
           <button
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
             onClick={() => navigate('/contact')}
           >
             Contact Us
           </button>
           <button
             type="button"
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
             onClick={() => navigate('/about')}
           >
             About Us
@@ -459,10 +454,10 @@ const Dashboard = () => {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="bg-white p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-shadow border border-gray-100 flex flex-col items-center text-center"
+            className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-xl transition-shadow hover:shadow-2xl dark:border-slate-700 dark:bg-slate-900"
           >
             <div className={`text-3xl font-black ${stat.color}`}>{stat.value}</div>
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{stat.label}</div>
+            <div className="mt-1 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">{stat.label}</div>
           </div>
         ))}
       </div>
@@ -470,16 +465,16 @@ const Dashboard = () => {
       <div ref={itemsSectionRef} className="max-w-6xl mx-auto py-20 px-4">
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-10">
           <div>
-            <h2 className="text-3xl font-black text-gray-900 mb-2">Lost &amp; Found Board</h2>
-            <p className="text-gray-500">
+            <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-white">Lost &amp; Found Board</h2>
+            <p className="text-gray-500 dark:text-slate-400">
               Active items stay visible until the author marks them as returned. Returned posts can then be deleted by the same author.
             </p>
           </div>
-          <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 flex gap-2">
+          <div className="flex gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <button
               onClick={() => setActiveTab('active')}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
-                activeTab === 'active' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'active' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               Active List
@@ -487,7 +482,7 @@ const Dashboard = () => {
             <button
               onClick={() => setActiveTab('returned')}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
-                activeTab === 'returned' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'returned' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               Returned List
@@ -508,11 +503,11 @@ const Dashboard = () => {
         )}
 
         {itemsLoading ? (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-md p-8 text-center text-gray-500">
+          <div className="rounded-3xl border border-gray-100 bg-white p-8 text-center text-gray-500 shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
             Loading items...
           </div>
         ) : displayedItems.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-dashed border-gray-200 shadow-sm p-12 text-center">
+          <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-12 text-center shadow-sm dark:border-slate-600 dark:bg-slate-900/50">
             <h3 className="text-xl font-bold text-gray-800 mb-2">
               {activeTab === 'active' ? 'No active items yet.' : 'No returned items yet.'}
             </h3>
@@ -549,9 +544,9 @@ const Dashboard = () => {
                       navigate(`/items/${item._id}`);
                     }
                   }}
-                  className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 hover:shadow-2xl transition-all group duration-300 cursor-pointer"
+                  className="group cursor-pointer overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-md transition-all duration-300 hover:shadow-2xl dark:border-slate-700 dark:bg-slate-900"
                 >
-                  <div className="relative h-56 bg-gray-100 overflow-hidden">
+                  <div className="relative h-56 overflow-hidden bg-gray-100 dark:bg-slate-800">
                     <span
                       className={`absolute top-4 left-4 z-10 text-white text-[10px] uppercase font-black px-3 py-1 rounded-full tracking-tighter ${
                         item.type === 'lost' ? 'bg-red-500' : 'bg-emerald-500'
@@ -642,7 +637,7 @@ const Dashboard = () => {
 
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[100] p-4 overflow-y-auto">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-2xl relative animate-in fade-in zoom-in duration-300 my-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+          <div className="relative my-6 max-h-[calc(100vh-3rem)] w-full max-w-2xl animate-in overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl fade-in zoom-in duration-300 dark:bg-slate-900">
             <button onClick={handleReportModalClose} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">
               x
             </button>
@@ -661,7 +656,7 @@ const Dashboard = () => {
                     name="type"
                     value={reportForm.type}
                     onChange={handleReportFormChange}
-                    className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                    className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                   >
                     <option value="lost">Lost item</option>
                     <option value="found">Found item</option>
@@ -673,7 +668,7 @@ const Dashboard = () => {
                     name="category"
                     value={reportForm.category}
                     onChange={handleReportFormChange}
-                    className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                    className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                   >
                     <option value="">Select a category</option>
                     {ITEM_CATEGORY_GROUPS.map((group) => (
@@ -699,7 +694,7 @@ const Dashboard = () => {
                   value={reportForm.incidentDate}
                   max={todayIsoDateLocal()}
                   onChange={handleReportFormChange}
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
               </div>
 
@@ -711,7 +706,7 @@ const Dashboard = () => {
                   value={reportForm.title}
                   onChange={handleReportFormChange}
                   placeholder="Black backpack"
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
               </div>
 
@@ -723,7 +718,7 @@ const Dashboard = () => {
                   value={reportForm.location}
                   onChange={handleReportFormChange}
                   placeholder="Main hall, library, Lab 01..."
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
               </div>
 
@@ -735,7 +730,7 @@ const Dashboard = () => {
                   value={reportForm.description}
                   onChange={handleReportFormChange}
                   placeholder="Add identifying details that help other students recognize the item."
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all resize-y min-h-[120px]"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all resize-y min-h-[120px]"
                 />
               </div>
 
@@ -746,7 +741,7 @@ const Dashboard = () => {
                   name="imageFile"
                   accept="image/*"
                   onChange={handleReportFormChange}
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
                 <p className="text-xs text-gray-400 mt-2">
                   {reportForm.imageFile ? `Selected: ${reportForm.imageFile.name}` : 'Optional. If provided, the image will be uploaded to Cloudinary.'}
@@ -778,7 +773,7 @@ const Dashboard = () => {
 
       {showLogin && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative animate-in fade-in zoom-in duration-300">
+          <div className="relative w-full max-w-md animate-in rounded-3xl bg-white p-8 shadow-2xl fade-in zoom-in duration-300 dark:bg-slate-900">
             <button onClick={() => setShowLogin(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">
               x
             </button>
@@ -790,7 +785,7 @@ const Dashboard = () => {
                 value={loginData.email}
                 onChange={handleLoginInputChange}
                 placeholder="Student Email"
-                className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
               />
               <input
                 type="password"
@@ -798,7 +793,7 @@ const Dashboard = () => {
                 value={loginData.password}
                 onChange={handleLoginInputChange}
                 placeholder="Password"
-                className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
               />
               {loginError && <p className="text-sm text-red-600 font-medium">{loginError}</p>}
               <button
@@ -821,7 +816,7 @@ const Dashboard = () => {
 
       {pendingDeleteItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 relative">
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl dark:bg-slate-900">
             <button
               onClick={closeDeleteModal}
               disabled={Boolean(actionItemId)}
@@ -873,7 +868,7 @@ const Dashboard = () => {
 
       {showProfile && currentUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-xl relative animate-in fade-in zoom-in duration-300">
+          <div className="relative w-full max-w-xl animate-in rounded-3xl bg-white p-8 shadow-2xl fade-in zoom-in duration-300 dark:bg-slate-900">
             <button onClick={() => setShowProfile(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">
               x
             </button>
@@ -947,7 +942,7 @@ const Dashboard = () => {
         </button>
       )}
 
-      <footer className="text-center py-12 text-gray-400 text-xs font-medium border-t bg-white mt-12">
+      <footer className="mt-12 border-t border-gray-100 bg-white py-12 text-center text-xs font-medium text-gray-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
         Copyright 2026 ResQ Portal | SLIIT Campus. Built for students, by students.
       </footer>
     </div>

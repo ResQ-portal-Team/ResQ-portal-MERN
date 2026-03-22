@@ -8,6 +8,24 @@ const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600&display=swap');
 
   :root {
+    --bg:          #f8fafc;
+    --bg-1:        #ffffff;
+    --bg-2:        #f1f5f9;
+    --border:      rgba(15,23,42,0.08);
+    --border-hi:   rgba(15,23,42,0.14);
+    --gold:        #b45309;
+    --gold-2:      #d97706;
+    --gold-dim:    rgba(180,83,9,0.1);
+    --gold-glow:   rgba(180,83,9,0.04);
+    --text:        #0f172a;
+    --text-2:      #475569;
+    --text-3:      #64748b;
+    --radius:      14px;
+    --dis:         'Cormorant Garamond', Georgia, serif;
+    --body:        'Outfit', sans-serif;
+  }
+
+  html.dark {
     --bg:          #0a0c10;
     --bg-1:        #0f1218;
     --bg-2:        #151b24;
@@ -20,9 +38,6 @@ const STYLES = `
     --text:        #e4e0d8;
     --text-2:      #8a8d96;
     --text-3:      #555c6a;
-    --radius:      14px;
-    --dis:         'Cormorant Garamond', Georgia, serif;
-    --body:        'Outfit', sans-serif;
   }
 
   *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,10 +50,15 @@ const STYLES = `
     position: fixed;
     inset: 0;
     background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px),
-      repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px);
+      repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(15,23,42,0.04) 79px, rgba(15,23,42,0.04) 80px),
+      repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(15,23,42,0.04) 79px, rgba(15,23,42,0.04) 80px);
     pointer-events: none;
     z-index: 0;
+  }
+  html.dark .ch::before {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px),
+      repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px);
   }
 
   .ch > * { position: relative; z-index: 1; }

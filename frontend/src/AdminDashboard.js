@@ -421,7 +421,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="bg-slate-900 text-white px-4 py-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">Admin Dashboard</h1>
@@ -450,7 +450,7 @@ const AdminDashboard = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex flex-wrap gap-2 mb-6 border-b border-slate-200">
+        <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => setTab('users')}
@@ -496,7 +496,7 @@ const AdminDashboard = () => {
         {loading ? (
           <p className="text-slate-500">Loading…</p>
         ) : tab === 'users' ? (
-          <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
             <table className="w-full text-sm">
               <thead className="bg-slate-100 text-left">
                 <tr>
@@ -539,7 +539,7 @@ const AdminDashboard = () => {
             {users.length === 0 && <p className="p-6 text-slate-500 text-center">No registered users.</p>}
           </div>
         ) : tab === 'items' ? (
-          <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
             <table className="w-full text-sm">
               <thead className="bg-slate-100 text-left">
                 <tr>
@@ -578,7 +578,7 @@ const AdminDashboard = () => {
             {items.length === 0 && <p className="p-6 text-slate-500 text-center">No items yet.</p>}
           </div>
         ) : tab === 'contacts' ? (
-          <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
             <table className="w-full text-sm">
               <thead className="bg-slate-100 text-left">
                 <tr>
@@ -659,7 +659,7 @@ const AdminDashboard = () => {
           </div>
         ) : (
           <div className="space-y-10">
-            <section className="bg-white rounded-xl shadow border border-slate-100 p-6">
+            <section className="rounded-xl border border-slate-100 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-900">
               <h2 className="text-lg font-bold text-slate-800 mb-1">Create community event</h2>
               <p className="text-sm text-slate-500 mb-6">
                 Post workshops, seminars, campus events, and more. Banner and video uploads require Cloudinary (CLOUDINARY_URL) on the server.
@@ -733,7 +733,7 @@ const AdminDashboard = () => {
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Event type / category *</label>
                   <select
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={eventForm.category}
                     onChange={(e) => setEventForm((f) => ({ ...f, category: e.target.value }))}
                   >
@@ -806,7 +806,7 @@ const AdminDashboard = () => {
                 <p className="text-sm text-slate-500 mb-3">
                   Shown first on the public hub. Use Mark finished (or Edit → checkbox) to move to Finished.
                 </p>
-                <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+                <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-100 text-left">
                       <tr>
@@ -869,7 +869,7 @@ const AdminDashboard = () => {
                 <p className="text-sm text-slate-500 mb-3">
                   Past start dates (before today, UTC) or manually marked finished.
                 </p>
-                <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+                <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-100 text-left">
                       <tr>
@@ -925,7 +925,7 @@ const AdminDashboard = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <form
             onSubmit={handleSaveEditCommunityEvent}
-            className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 my-8 space-y-4 text-sm"
+            className="my-8 w-full max-w-2xl space-y-4 rounded-2xl bg-white p-6 text-sm shadow-xl dark:bg-slate-900"
           >
             <h3 className="text-lg font-bold text-slate-800">Edit community event</h3>
             <p className="text-slate-500 text-xs -mt-2">
@@ -1023,7 +1023,7 @@ const AdminDashboard = () => {
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Event type / category *</label>
                 <select
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.category}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, category: e.target.value }))}
                 >
@@ -1121,7 +1121,7 @@ const AdminDashboard = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <form
             onSubmit={saveEdit}
-            className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4"
+            className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900"
           >
             <h3 className="text-lg font-bold text-slate-800">Edit user</h3>
             <div>

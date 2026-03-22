@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './index.css';
+import { ThemeProvider } from './ThemeContext';
+import ThemeToggle from './ThemeToggle';
 import ChatBot from './ChatBot';
 import Dashboard from './Dashboard';
 import LandingPage from './LandingPage'; // Make sure you have created LandingPage.js
@@ -17,6 +19,7 @@ import AboutUs from './AboutUs';
 
 function App() {
   return (
+    <ThemeProvider>
     <Router>
       <Routes>
         {/* The professional Entry Point of the site */}
@@ -36,10 +39,10 @@ function App() {
         
         {/* AI Assistant Registration - Dedicated for new users */}
         <Route path="/onboarding" element={
-          <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-5 font-sans">
-            <h1 className="text-4xl font-extrabold text-blue-800 mb-8 tracking-tight text-center">
+          <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-5 font-sans dark:bg-slate-950 dark:text-slate-100">
+            <h1 className="mb-8 text-center text-4xl font-extrabold tracking-tight text-blue-800 dark:text-blue-400">
               Welcome to ResQ <br/>
-              <span className="text-lg font-medium text-gray-500">Let's set up your profile</span>
+              <span className="text-lg font-medium text-gray-500 dark:text-slate-400">Let's set up your profile</span>
             </h1>
             <ChatBot />
           </div>
@@ -64,7 +67,9 @@ function App() {
 
         <Route path="/about" element={<AboutUs />} />
       </Routes>
+      <ThemeToggle />
     </Router>
+    </ThemeProvider>
   );
 }
 

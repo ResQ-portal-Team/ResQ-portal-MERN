@@ -869,3 +869,25 @@ a.community-hub-event-card--full:focus-visible {
     font-size: 0.75rem;
   }
 }
+
+/* ── Site theme: light mode (html without .dark) — readable nav on hub routes ─ */
+html:not(.dark) .community-hub-nav {
+  background: rgba(248, 250, 252, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #0f172a;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+html:not(.dark) .community-hub-logo,
+html:not(.dark) .community-hub-main-links button {
+  color: #0f172a;
+}
+
+html:not(.dark) .community-hub-main-links button:hover {
+  color: #2563eb;
+}
+
+html.dark .community-hub-root {
+  background: #0f172a;
+}

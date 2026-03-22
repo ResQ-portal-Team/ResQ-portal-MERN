@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import CommunityHubHeader from './CommunityHubHeader';
 import { API_BASE } from '../config';
 import { youtubeEmbedSrcWithAutoplay, youtubeEmbedUrl } from './communityHubVideo';
+import { useTheme } from '../ThemeContext';
 
-/* ─── Design tokens ─────────────────────────────────────────────────────────── */
-const T = {
+/* ─── Design tokens (dark = current hub aesthetic; light = readable on white) ─ */
+const T_DARK = {
   bg:        '#080b10',
   surface:   '#0e1117',
   surfaceAlt:'#131720',
@@ -13,25 +14,42 @@ const T = {
   text:      '#e6e1d8',
   muted:     '#7a7690',
   hint:      '#3e3d4e',
-  accent:    '#6c5ce7',
-  accentLo:  'rgba(108,92,231,0.15)',
-  accentBdr: 'rgba(108,92,231,0.3)',
-  amber:     '#f59e0b',
-  amberLo:   'rgba(245,158,11,0.1)',
-  amberBdr:  'rgba(245,158,11,0.25)',
-  red:       '#ef4444',
-  redLo:     'rgba(239,68,68,0.08)',
-  redBdr:    'rgba(239,68,68,0.2)',
+  factValue: '#cdc9d8',
+  title:     '#f0ece3',
+  descBg:    '#0f1218',
+  descText:  '#ada9bc',
+  backHover: 'rgba(255,255,255,0.25)',
+  spinnerBd: 'rgba(255,255,255,0.07)',
+  videoLine: 'rgba(255,255,255,0.04)',
   serif:     "'Playfair Display', 'Georgia', serif",
   sans:      "'DM Sans', 'Helvetica Neue', sans-serif",
 };
 
-const GLOBAL_CSS = `
+const T_LIGHT = {
+  bg:        '#f8fafc',
+  surface:   '#ffffff',
+  surfaceAlt:'#f1f5f9',
+  border:    'rgba(15,23,42,0.1)',
+  text:      '#0f172a',
+  muted:     '#64748b',
+  hint:      '#64748b',
+  factValue: '#334155',
+  title:     '#0f172a',
+  descBg:    '#ffffff',
+  descText:  '#475569',
+  backHover: 'rgba(15,23,42,0.25)',
+  spinnerBd: 'rgba(15,23,42,0.12)',
+  videoLine: 'rgba(15,23,42,0.08)',
+  serif:     "'Playfair Display', 'Georgia', serif",
+  sans:      "'DM Sans', 'Helvetica Neue', sans-serif",
+};
+
+const getGlobalCss = (tk) => `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
   @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
   @keyframes spin   { to { transform: rotate(360deg); } }
-  .back-btn:hover   { border-color: rgba(255,255,255,0.25) !important; color: #e6e1d8 !important; }
-  .fact-row + .fact-row { border-top: 0.5px solid rgba(255,255,255,0.07); }
+  .back-btn:hover   { border-color: ${tk.backHover} !important; color: ${tk.text} !important; }
+  .fact-row + .fact-row { border-top: 0.5px solid ${tk.border}; }
   @media (max-width: 720px) {
     .layout-grid   { grid-template-columns: 1fr !important; }
     .sidebar       { position: static !important; }
@@ -50,27 +68,29 @@ const fmt = (d) => {
 };
 
 /* ─── Spinner ────────────────────────────────────────────────────────────────── */
-const Spinner = () => (
-  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'72px 0', color:'#7a7690', fontSize:14, fontFamily:T.sans }}>
-    <div style={{ width:28, height:28, border:'2px solid rgba(255,255,255,0.07)', borderTop:'2px solid #6c5ce7', borderRadius:'50%', animation:'spin 0.75s linear infinite' }} />
+const Spinner = ({ tk }) => (
+  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'72px 0', color:tk.muted, fontSize:14, fontFamily:tk.sans }}>
+    <div style={{ width:28, height:28, border:`2px solid ${tk.spinnerBd}`, borderTop:'2px solid #6c5ce7', borderRadius:'50%', animation:'spin 0.75s linear infinite' }} />
     Loading event…
   </div>
 );
 
 /* ─── FactRow ────────────────────────────────────────────────────────────────── */
-const FactRow = ({ icon, label, value }) =>
+const FactRow = ({ icon, label, value, tk }) =>
   value ? (
     <div className="fact-row" style={{ display:'flex', alignItems:'flex-start', gap:11, padding:'12px 0' }}>
       <span style={{ fontSize:14, marginTop:2, flexShrink:0, lineHeight:1 }}>{icon}</span>
       <div>
-        <p style={{ margin:'0 0 3px', fontSize:10, fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:'#3e3d4e' }}>{label}</p>
-        <p style={{ margin:0, fontSize:13.5, color:'#cdc9d8', lineHeight:1.55 }}>{value}</p>
+        <p style={{ margin:'0 0 3px', fontSize:10, fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:tk.hint }}>{label}</p>
+        <p style={{ margin:0, fontSize:13.5, color:tk.factValue, lineHeight:1.55 }}>{value}</p>
       </div>
     </div>
   ) : null;
 
 /* ─── Main ───────────────────────────────────────────────────────────────────── */
 export default function CommunityHubEventDetail() {
+  const { theme } = useTheme();
+  const tk = theme === 'dark' ? T_DARK : T_LIGHT;
   const { eventId } = useParams();
   const navigate    = useNavigate();
   const [event, setEvent]     = useState(null);
@@ -112,8 +132,8 @@ export default function CommunityHubEventDetail() {
     : null;
 
   return (
-    <div style={{ minHeight:'100vh', background:T.bg, color:T.text, fontFamily:T.sans }}>
-      <style>{GLOBAL_CSS}</style>
+    <div style={{ minHeight:'100vh', background:tk.bg, color:tk.text, fontFamily:tk.sans }}>
+      <style>{getGlobalCss(tk)}</style>
       <CommunityHubHeader sticky />
 
       <main style={{ width:'100%', maxWidth:'none', margin:0, padding:'28px 0 80px 16px', boxSizing:'border-box' }}>
@@ -125,9 +145,9 @@ export default function CommunityHubEventDetail() {
           onClick={() => navigate('/community-hub/content')}
           style={{
             display:'inline-flex', alignItems:'center', gap:7,
-            background:'none', border:'0.5px solid rgba(255,255,255,0.1)',
-            borderRadius:8, color:'#7a7690', fontSize:13,
-            fontFamily:T.sans, fontWeight:500, padding:'7px 15px',
+            background:'none', border:`0.5px solid ${tk.border}`,
+            borderRadius:8, color:tk.muted, fontSize:13,
+            fontFamily:tk.sans, fontWeight:500, padding:'7px 15px',
             cursor:'pointer', marginBottom:28,
             transition:'border-color .18s, color .18s',
           }}
@@ -136,7 +156,7 @@ export default function CommunityHubEventDetail() {
         </button>
 
         {/* States */}
-        {loading && <Spinner />}
+        {loading && <Spinner tk={tk} />}
 
         {!loading && error && (
           <p role="alert" style={{
@@ -148,7 +168,7 @@ export default function CommunityHubEventDetail() {
         )}
 
         {!loading && !error && !event && (
-          <p style={{ color:'#7a7690', fontSize:15, textAlign:'center', padding:'60px 0' }}>
+          <p style={{ color:tk.muted, fontSize:15, textAlign:'center', padding:'60px 0' }}>
             Event not found.
           </p>
         )}
@@ -176,7 +196,7 @@ export default function CommunityHubEventDetail() {
                       borderRadius:13, overflow:'hidden',
                       background:'#000',
                       border:'0.5px solid rgba(108,92,231,0.18)',
-                      outline:'1px solid rgba(255,255,255,0.04)',
+                      outline:`1px solid ${tk.videoLine}`,
                     }}>
                       {ytSrc ? (
                         <iframe
@@ -202,7 +222,7 @@ export default function CommunityHubEventDetail() {
                         />
                       )}
                     </div>
-                    <p style={{ margin:'7px 0 0', fontSize:11.5, color:'#3e3d4e', fontStyle:'italic' }}>
+                    <p style={{ margin:'7px 0 0', fontSize:11.5, color:tk.hint, fontStyle:'italic' }}>
                       Autoplay with sound — tap the video if your browser blocks it.
                     </p>
                   </section>
@@ -211,8 +231,8 @@ export default function CommunityHubEventDetail() {
                     width:'100%',
                     display:'flex', alignItems:'center', justifyContent:'center',
                     aspectRatio:'16/9', borderRadius:13,
-                    background:'#131720', border:'0.5px solid rgba(255,255,255,0.07)',
-                    color:'#3e3d4e', fontSize:13,
+                    background:tk.surfaceAlt, border:`0.5px solid ${tk.border}`,
+                    color:tk.hint, fontSize:13,
                   }}>
                     No video available
                   </div>
@@ -221,10 +241,10 @@ export default function CommunityHubEventDetail() {
                 {/* Description */}
                 {event.description && (
                   <div style={{
-                    background:'#0f1218', border:'0.5px solid rgba(255,255,255,0.07)',
+                    background:tk.descBg, border:`0.5px solid ${tk.border}`,
                     borderRadius:12, padding:'18px 20px',
                   }}>
-                    <p style={{ margin:0, fontSize:14.5, lineHeight:1.8, color:'#ada9bc' }}>
+                    <p style={{ margin:0, fontSize:14.5, lineHeight:1.8, color:tk.descText }}>
                       {event.description}
                     </p>
                   </div>
@@ -235,7 +255,7 @@ export default function CommunityHubEventDetail() {
               <aside
                 className="sidebar"
                 style={{
-                  background:'#0e1117', border:'0.5px solid rgba(255,255,255,0.07)',
+                  background:tk.surface, border:`0.5px solid ${tk.border}`,
                   borderRadius:12, padding:'4px 16px 12px',
                   position:'sticky', top:20,
                 }}
@@ -244,8 +264,8 @@ export default function CommunityHubEventDetail() {
                 {event.imageUrl && (
                   <div style={{
                     margin:'0 -16px 14px', borderRadius:10, overflow:'hidden',
-                    border:'0.5px solid rgba(255,255,255,0.08)',
-                    background:'#131720',
+                    border:`0.5px solid ${tk.border}`,
+                    background:tk.surfaceAlt,
                   }}>
                     <img
                       src={event.imageUrl}
@@ -256,29 +276,30 @@ export default function CommunityHubEventDetail() {
                   </div>
                 )}
                 <h1 style={{
-                  margin:'0 0 14px', fontFamily:T.serif, fontWeight:700,
-                  fontSize:'clamp(18px,2.2vw,24px)', lineHeight:1.25, color:'#f0ece3',
+                  margin:'0 0 14px', fontFamily:tk.serif, fontWeight:700,
+                  fontSize:'clamp(18px,2.2vw,24px)', lineHeight:1.25, color:tk.title,
                 }}>
                   {event.title}
                 </h1>
                 <p style={{
                   margin:'0 0 2px', fontSize:10, fontWeight:700,
-                  letterSpacing:'0.09em', textTransform:'uppercase', color:'#3e3d4e',
+                  letterSpacing:'0.09em', textTransform:'uppercase', color:tk.hint,
                 }}>
                   Details
                 </p>
-                <FactRow icon="🏷" label="Category" value={event.category || 'Event'} />
+                <FactRow icon="🏷" label="Category" value={event.category || 'Event'} tk={tk} />
                 {event.finished && (
                   <FactRow
                     icon="⏱"
                     label="Status"
                     value={event.finishedByManual && !event.finishedByDate ? 'Closed by admin' : 'Event ended'}
+                    tk={tk}
                   />
                 )}
-                <FactRow icon="🗓" label="When"      value={when} />
-                <FactRow icon="📍" label="Where"     value={event.location} />
-                <FactRow icon="👤" label="Organizer" value={event.organizer} />
-                <FactRow icon="✉️" label="Contact"   value={event.contactInfo} />
+                <FactRow icon="🗓" label="When"      value={when} tk={tk} />
+                <FactRow icon="📍" label="Where"     value={event.location} tk={tk} />
+                <FactRow icon="👤" label="Organizer" value={event.organizer} tk={tk} />
+                <FactRow icon="✉️" label="Contact"   value={event.contactInfo} tk={tk} />
               </aside>
 
             </div>
