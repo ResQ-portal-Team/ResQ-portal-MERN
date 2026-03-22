@@ -679,7 +679,20 @@ a.community-hub-event-card--full:focus-visible {
   z-index: 1;
 }
 
-/* Single event detail */
+/* Single event detail — full viewport width (no narrow column / side margins) */
+.community-hub-content.community-hub-detail {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Match nav bar to full width on detail (same as main column) */
+.community-hub-content-page .community-hub-nav-inner {
+  max-width: none;
+}
+
 .community-hub-detail {
   padding-bottom: 3rem;
 }
@@ -688,6 +701,7 @@ a.community-hub-event-card--full:focus-visible {
   display: inline-flex;
   align-items: center;
   margin-bottom: 1.5rem;
+  margin-left: 1rem;
   padding: 0.4rem 0;
   font-size: 0.9rem;
   font-weight: 600;
@@ -704,7 +718,7 @@ a.community-hub-event-card--full:focus-visible {
 
 .community-hub-detail-article {
   background: #fff;
-  border-radius: 1rem;
+  border-radius: 0;
   border: 1px solid #e2e8f0;
   overflow: hidden;
   box-shadow:
@@ -760,14 +774,15 @@ a.community-hub-event-card--full:focus-visible {
 /* Dark “cinema” strip — primary focus */
 .community-hub-detail-video-stage {
   background: linear-gradient(180deg, #070b14 0%, #0f172a 48%, #111827 100%);
-  padding: clamp(1.35rem, 4vw, 2rem) clamp(0.65rem, 2.5vw, 1.25rem) clamp(1.5rem, 5vw, 2.35rem);
+  padding: clamp(1.35rem, 4vw, 2rem) 0 clamp(1.5rem, 5vw, 2.35rem);
   border-top: 1px solid rgba(148, 163, 184, 0.12);
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
 }
 
 .community-hub-detail-video-stage-inner {
-  max-width: 56rem;
-  margin: 0 auto;
+  max-width: none;
+  width: 100%;
+  margin: 0;
 }
 
 .community-hub-detail-video-label {
@@ -812,8 +827,8 @@ a.community-hub-event-card--full:focus-visible {
 
 .community-hub-detail-inner {
   padding: 1.35rem 1.35rem 1.65rem;
-  max-width: 48rem;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .community-hub-detail-desc {
@@ -853,4 +868,26 @@ a.community-hub-event-card--full:focus-visible {
     gap: 0.45rem 0.75rem;
     font-size: 0.75rem;
   }
+}
+
+/* ── Site theme: light mode (html without .dark) — readable nav on hub routes ─ */
+html:not(.dark) .community-hub-nav {
+  background: rgba(248, 250, 252, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #0f172a;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+html:not(.dark) .community-hub-logo,
+html:not(.dark) .community-hub-main-links button {
+  color: #0f172a;
+}
+
+html:not(.dark) .community-hub-main-links button:hover {
+  color: #2563eb;
+}
+
+html.dark .community-hub-root {
+  background: #0f172a;
 }
