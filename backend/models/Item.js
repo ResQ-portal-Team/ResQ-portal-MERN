@@ -10,11 +10,11 @@ const ItemSchema = new mongoose.Schema({
     // Location for matching: "Canteen", "Lab 01", "Main Hall"
     location: { type: String, required: true },
     image: { type: String }, // URL or filename for the uploaded image
-    imageTags: { type: [String], default: [] }, // AI Matching ekata keywords save karanna add kala
+    imagePublicId: { type: String, default: null },
     date: { type: Date, default: Date.now },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    // Status: "pending" for active posts, "returned" for matched and handed over items
-    status: { type: String, enum: ['pending', 'returned'], default: 'pending' },
+    // Legacy "pending" values are treated as active items in the UI and routes.
+    status: { type: String, enum: ['active', 'pending', 'returned'], default: 'active' },
     // Matching ID to link lost and found reports
     matchedWith: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', default: null },
     // OTP for secure handover verification
