@@ -110,8 +110,16 @@ const ItemDetailPage = () => {
                   <p className="text-gray-800 font-semibold mt-1">{item.location}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 uppercase text-xs font-bold">Reported On</p>
-                  <p className="text-gray-800 font-semibold mt-1">{formatItemDate(item.createdAt || item.date)}</p>
+                  <p className="text-gray-400 uppercase text-xs font-bold">
+                    {item.type === 'found' ? 'Date found' : 'Date lost'}
+                  </p>
+                  <p className="text-gray-800 font-semibold mt-1">
+                    {item.date ? formatItemDate(item.date) : 'Not specified'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-gray-400 uppercase text-xs font-bold">Listed on</p>
+                  <p className="text-gray-800 font-semibold mt-1">{formatItemDate(item.createdAt)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-gray-400 uppercase text-xs font-bold">Status</p>
