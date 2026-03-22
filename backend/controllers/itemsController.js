@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const Item = require('../models/Item');
+const { ALLOWED_ITEM_CATEGORIES } = require('../constants/itemCategories');
 
 const ACTIVE_STATUSES = ['active', 'pending'];
 
@@ -103,6 +104,36 @@ const buildStatusFilter = (status) => {
 const populateItemQuery = (query) =>
     query.populate('postedBy', 'realName nickname email studentId');
 
+const firstNonEmptyDateField = (body) => {
+    const candidates = [body.eventDate, body.foundDate, body.lostDate, body.date];
+    for (const v of candidates) {
+        if (v !== undefined && v !== null && v !== '') {
+            return v;
+        }
+    }
+    return undefined;
+};
+
+const parseIncidentDate = (body) => {
+    const raw = firstNonEmptyDateField(body);
+    if (raw === undefined) {
+        return { error: 'MISSING', date: null };
+    }
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) {
+        return { error: 'INVALID', date: null };
+    }
+    return { error: null, date: d };
+};
+
+/** Calendar day in UTC — incident date must not be after “today” (UTC). */
+const isIncidentDateInFuture = (d) => {
+    const now = new Date();
+    const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const inputUTC = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    return inputUTC > todayUTC;
+};
+
 const sanitizeItemPayload = (body) => ({
     title: body.title?.trim(),
     description: body.description?.trim(),
@@ -111,13 +142,29 @@ const sanitizeItemPayload = (body) => ({
     location: body.location?.trim()
 });
 
-const validateItemPayload = (payload) => {
+const validateItemPayload = (payload, options = {}) => {
+    const { incidentDate } = options;
+
     if (!payload.title || !payload.description || !payload.type || !payload.category || !payload.location) {
         return 'Title, description, type, category, and location are required.';
     }
 
     if (!['lost', 'found'].includes(payload.type)) {
         return 'Type must be either lost or found.';
+    }
+
+    if (!ALLOWED_ITEM_CATEGORIES.includes(payload.category)) {
+        return 'Please choose a valid category from the list.';
+    }
+
+    if (!incidentDate) {
+        return payload.type === 'found'
+            ? 'Date found is required.'
+            : 'Date lost is required.';
+    }
+
+    if (isIncidentDateInFuture(incidentDate)) {
+        return 'Date must be today or in the past, not in the future.';
     }
 
     return null;
@@ -128,7 +175,11 @@ const canManageItem = (item, userId) => String(item.postedBy?._id || item.posted
 exports.createItem = async (req, res) => {
     try {
         const payload = sanitizeItemPayload(req.body);
-        const validationError = validateItemPayload(payload);
+        const parsed = parseIncidentDate(req.body);
+        if (parsed.error === 'INVALID') {
+            return res.status(400).json({ message: 'Invalid date. Use a valid calendar date.' });
+        }
+        const validationError = validateItemPayload(payload, { incidentDate: parsed.date });
 
         if (validationError) {
             return res.status(400).json({ message: validationError });
@@ -148,6 +199,7 @@ exports.createItem = async (req, res) => {
 
         const newItem = await Item.create({
             ...payload,
+            date: parsed.date,
             image: imageUpload?.url || null,
             imagePublicId: imageUpload?.publicId || null,
             postedBy: posterId,
@@ -214,8 +266,14 @@ exports.updateItem = async (req, res) => {
             return res.status(403).json({ message: 'Only the post author can update this item.' });
         }
 
-        const payload = sanitizeItemPayload({ ...item.toObject(), ...req.body });
-        const validationError = validateItemPayload(payload);
+        const mergedBody = { ...item.toObject(), ...req.body };
+        const payload = sanitizeItemPayload(mergedBody);
+        const parsed = parseIncidentDate(mergedBody);
+        if (parsed.error === 'INVALID') {
+            return res.status(400).json({ message: 'Invalid date. Use a valid calendar date.' });
+        }
+        const incidentDate = parsed.error === 'MISSING' ? item.date : parsed.date;
+        const validationError = validateItemPayload(payload, { incidentDate });
 
         if (validationError) {
             return res.status(400).json({ message: validationError });
@@ -237,6 +295,9 @@ exports.updateItem = async (req, res) => {
         item.type = payload.type;
         item.category = payload.category;
         item.location = payload.location;
+        if (parsed.date) {
+            item.date = parsed.date;
+        }
 
         await item.save();
 
