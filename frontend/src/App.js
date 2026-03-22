@@ -8,6 +8,7 @@ import CommunityHub from './socialpost/CommunityHub';
 import CommunityHubContent from './socialpost/CommunityHubContent';
 import CommunityHubEventDetail from './socialpost/CommunityHubEventDetail';
 import ReportItem from './ReportItem';
+import ItemDetailPage from './ItemDetailPage';
 import AdminLogin from './AdminLogin';
 import AdminDashboard from './AdminDashboard';
 import ProtectedAdminRoute from './ProtectedAdminRoute';
@@ -52,6 +53,9 @@ function App() {
 
         {/* Report Item Page */}
         <Route path="/report-item" element={<ReportItem />} />
+
+        {/* Lost & found item detail */}
+        <Route path="/items/:itemId" element={<ItemDetailPage />} />
       </Routes>
     </Router>
   );
