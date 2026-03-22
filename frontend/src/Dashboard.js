@@ -503,7 +503,16 @@ const Dashboard = () => {
               return (
                 <div
                   key={item._id}
-                  className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 hover:shadow-2xl transition-all group duration-300"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/items/${item._id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/items/${item._id}`);
+                    }
+                  }}
+                  className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 hover:shadow-2xl transition-all group duration-300 cursor-pointer"
                 >
                   <div className="relative h-56 bg-gray-100 overflow-hidden">
                     <span
@@ -556,7 +565,10 @@ const Dashboard = () => {
                       </span>
                       {isAuthor && itemStatus === 'active' && (
                         <button
-                          onClick={() => handleMarkAsReturned(item._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsReturned(item._id);
+                          }}
                           disabled={isBusy}
                           className="text-sm font-black text-green-700 hover:text-green-900 transition disabled:opacity-60"
                         >
@@ -565,7 +577,10 @@ const Dashboard = () => {
                       )}
                       {isAuthor && itemStatus === 'returned' && (
                         <button
-                          onClick={() => openDeleteModal(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteModal(item);
+                          }}
                           disabled={isBusy}
                           className="text-sm font-black text-red-600 hover:text-red-800 transition disabled:opacity-60"
                         >

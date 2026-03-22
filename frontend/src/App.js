@@ -52,6 +52,9 @@ function App() {
 
         {/* Report Item Page */}
         <Route path="/report-item" element={<ReportItem />} />
+
+        {/* Item Detail Page */}
+        <Route path="/items/:itemId" element={<ItemDetailPage />} />
       </Routes>
     </Router>
   );
