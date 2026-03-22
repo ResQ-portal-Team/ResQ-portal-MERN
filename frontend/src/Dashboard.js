@@ -364,6 +364,12 @@ const Dashboard = () => {
           >
             Community Hub
           </button>
+          <button
+            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            onClick={() => navigate('/contact')}
+          >
+            Contact Us
+          </button>
           {currentUser ? (
             <button
               onClick={() => setShowProfile(true)}

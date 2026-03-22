@@ -12,6 +12,7 @@ import AdminLogin from './AdminLogin';
 import AdminDashboard from './AdminDashboard';
 import ProtectedAdminRoute from './ProtectedAdminRoute';
 import ItemDetailPage from './ItemDetailPage';
+import ContactUs from './ContactUs';
 
 function App() {
   return (
@@ -56,6 +57,9 @@ function App() {
 
         {/* Item Detail Page */}
         <Route path="/items/:itemId" element={<ItemDetailPage />} />
+
+        {/* Contact Us */}
+        <Route path="/contact" element={<ContactUs />} />
       </Routes>
     </Router>
   );

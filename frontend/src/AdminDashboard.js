@@ -57,6 +57,7 @@ const AdminDashboard = () => {
   const [tab, setTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [items, setItems] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [communityEventsUpcoming, setCommunityEventsUpcoming] = useState([]);
   const [communityEventsFinished, setCommunityEventsFinished] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +91,13 @@ const AdminDashboard = () => {
     setItems(data.items || []);
   }, []);
 
+  const loadContacts = useCallback(async () => {
+    const res = await fetch(`${API_BASE}/api/admin/contacts`, { headers: authHeaders() });
+    const data = await parseJson(res);
+    if (!res.ok) throw new Error(data.message || 'Failed to load messages');
+    setContacts(data.contacts || []);
+  }, []);
+
   const loadCommunityEvents = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/admin/community-events`, { headers: authHeaders() });
     const data = await parseJson(res);
@@ -102,13 +110,13 @@ const AdminDashboard = () => {
     setError('');
     setLoading(true);
     try {
-      await Promise.all([loadUsers(), loadItems(), loadCommunityEvents()]);
+      await Promise.all([loadUsers(), loadItems(), loadCommunityEvents(), loadContacts()]);
     } catch (e) {
       setError(e.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [loadUsers, loadItems, loadCommunityEvents]);
+  }, [loadUsers, loadItems, loadCommunityEvents, loadContacts]);
 
   useEffect(() => {
     refresh();
@@ -470,6 +478,15 @@ const AdminDashboard = () => {
           >
             Community Hub
           </button>
+          <button
+            type="button"
+            onClick={() => setTab('contacts')}
+            className={`px-4 py-2 font-semibold border-b-2 -mb-px ${
+              tab === 'contacts' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'
+            }`}
+          >
+            Contact Us
+          </button>
         </div>
 
         {error && (
@@ -559,6 +576,86 @@ const AdminDashboard = () => {
               </tbody>
             </table>
             {items.length === 0 && <p className="p-6 text-slate-500 text-center">No items yet.</p>}
+          </div>
+        ) : tab === 'contacts' ? (
+          <div className="bg-white rounded-xl shadow border border-slate-100 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100 text-left">
+                <tr>
+                  <th className="p-3 font-semibold">From</th>
+                  <th className="p-3 font-semibold">Email</th>
+                  <th className="p-3 font-semibold">Subject</th>
+                  <th className="p-3 font-semibold">Message</th>
+                  <th className="p-3 font-semibold">Status</th>
+                  <th className="p-3 font-semibold">Date</th>
+                  <th className="p-3 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contacts.map((c) => (
+                  <tr key={c._id} className="border-t border-slate-100">
+                    <td className="p-3">{c.name}</td>
+                    <td className="p-3">{c.email}</td>
+                    <td className="p-3 max-w-xs truncate" title={c.subject}>{c.subject}</td>
+                    <td className="p-3 max-w-md truncate" title={c.message}>{c.message}</td>
+                    <td className="p-3 capitalize">{c.status}</td>
+                    <td className="p-3 whitespace-nowrap">{new Date(c.createdAt).toLocaleString()}</td>
+                    <td className="p-3 text-right space-x-2">
+                      {c.status !== 'resolved' && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setActionId(`c-res-${c._id}`);
+                            try {
+                              const res = await fetch(`${API_BASE}/api/admin/contacts/${c._id}/resolve`, {
+                                method: 'PATCH',
+                                headers: authHeaders(),
+                              });
+                              const data = await parseJson(res);
+                              if (!res.ok) throw new Error(data.message || 'Failed to resolve');
+                              await loadContacts();
+                            } catch (e) {
+                              setError(e.message);
+                            } finally {
+                              setActionId('');
+                            }
+                          }}
+                          disabled={Boolean(actionId)}
+                          className="text-emerald-700 font-semibold hover:underline disabled:opacity-50"
+                        >
+                          {actionId === `c-res-${c._id}` ? '…' : 'Mark resolved'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!window.confirm('Delete this message?')) return;
+                          setActionId(`c-del-${c._id}`);
+                          try {
+                            const res = await fetch(`${API_BASE}/api/admin/contacts/${c._id}`, {
+                              method: 'DELETE',
+                              headers: authHeaders(),
+                            });
+                            const data = await parseJson(res);
+                            if (!res.ok) throw new Error(data.message || 'Failed to delete');
+                            await loadContacts();
+                          } catch (e) {
+                            setError(e.message);
+                          } finally {
+                            setActionId('');
+                          }
+                        }}
+                        disabled={Boolean(actionId)}
+                        className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                      >
+                        {actionId === `c-del-${c._id}` ? '…' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {contacts.length === 0 && <p className="p-6 text-slate-500 text-center">No messages yet.</p>}
           </div>
         ) : (
           <div className="space-y-10">

@@ -23,6 +23,7 @@ app.use(express.urlencoded({ limit: requestBodyLimit, extended: true }));
 const authRoutes = require('./routes/authRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 const CommunityEvent = require('./models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
 
@@ -30,6 +31,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 /** Admin routes: GET /api/admin/health (no auth), then /users, /items, … (JWT + role admin) */
 app.use('/api/admin', adminRoutes);
+/** Public contact submissions */
+app.use('/api/contacts', contactRoutes);
 
 /** Public list for Community Hub — upcoming vs finished (date + manual) */
 app.get('/api/community-events', async (req, res) => {

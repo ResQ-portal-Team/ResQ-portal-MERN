@@ -2,6 +2,7 @@ const express = require('express');
 const { authenticate, requireAdmin } = require('../middleware/authMiddleware');
 const adminController = require('../controllers/adminController');
 const communityEventController = require('../controllers/communityEventController');
+const contactController = require('../controllers/contactController');
 
 const router = express.Router();
 
@@ -27,5 +28,10 @@ router.patch(
   communityEventController.markFinished
 );
 router.delete('/community-events/:id', authenticate, requireAdmin, communityEventController.remove);
+
+// Contact messages management
+router.get('/contacts', authenticate, requireAdmin, contactController.adminList);
+router.patch('/contacts/:id/resolve', authenticate, requireAdmin, contactController.adminResolve);
+router.delete('/contacts/:id', authenticate, requireAdmin, contactController.adminDelete);
 
 module.exports = router;
