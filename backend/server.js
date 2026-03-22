@@ -1,24 +1,64 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
-// const cors = require('cors'); // අනවශ්‍යයි, මම මේක comment කළා (ඕනනම් අයින් කරලා දාන්න)
+const cors = require('cors');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 require('dotenv').config({ path: path.join(__dirname, '.env'), override: false });
 
 const app = express();
 
 // --- Middleware ---
-// app.use(cors()); // Proxy එක පාවිච්චි කරන නිසා CORS දැන් අත්‍යවශ්‍ය නැහැ
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '10mb';
+/** Base64 video/image payloads need a higher limit; override in .env if needed. */
+const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '50mb';
+app.use(
+  cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: requestBodyLimit }));
 app.use(express.urlencoded({ limit: requestBodyLimit, extended: true }));
 
 // --- Routes ---
 const authRoutes = require('./routes/authRoutes');
 const itemRoutes = require('./routes/itemRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const CommunityEvent = require('./models/CommunityEvent');
+const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
+/** Admin routes: GET /api/admin/health (no auth), then /users, /items, … (JWT + role admin) */
+app.use('/api/admin', adminRoutes);
+
+/** Public list for Community Hub — upcoming vs finished (date + manual) */
+app.get('/api/community-events', async (req, res) => {
+  try {
+    const raw = await CommunityEvent.find().sort({ startDateTime: 1 }).lean();
+    const enriched = raw.map(enrichEvent);
+    const { upcoming, finished } = splitUpcomingFinished(enriched);
+    res.status(200).json({ upcoming, finished });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to load community events.' });
+  }
+});
+
+/** Single event for hub detail page */
+app.get('/api/community-events/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+    const event = await CommunityEvent.findById(id).lean();
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+    res.status(200).json({ event: enrichEvent(event) });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to load event.' });
+  }
+});
 
 // --- MongoDB Connection ---
 const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/resq_portal";

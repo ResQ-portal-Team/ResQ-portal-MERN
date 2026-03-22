@@ -139,11 +139,18 @@ exports.createItem = async (req, res) => {
             imageUpload = await uploadImageToCloudinary(req.body.imageData);
         }
 
+        const posterId = req.user.id || req.user._id;
+        if (!posterId) {
+            return res.status(403).json({
+                message: 'Posting items requires a user id in the token. Admin-only login does not include this yet.',
+            });
+        }
+
         const newItem = await Item.create({
             ...payload,
             image: imageUpload?.url || null,
             imagePublicId: imageUpload?.publicId || null,
-            postedBy: req.user.id,
+            postedBy: posterId,
             status: 'active'
         });
 

@@ -1,30 +1,8 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
+const { authenticate } = require('../middleware/authMiddleware');
 const itemsController = require('../controllers/itemsController');
 
 const router = express.Router();
-
-const authenticate = (req, res, next) => {
-    try {
-        const authHeader = req.headers.authorization || '';
-
-        if (!authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ message: 'Authentication required.' });
-        }
-
-        const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "dev_jwt_secret_change_me" : null);
-
-        if (!jwtSecret) {
-            return res.status(500).json({ message: 'JWT secret is not configured.' });
-        }
-
-        const token = authHeader.replace('Bearer ', '');
-        req.user = jwt.verify(token, jwtSecret);
-        next();
-    } catch (error) {
-        return res.status(401).json({ message: 'Invalid or expired token.' });
-    }
-};
 
 router.get('/', itemsController.getItems);
 router.get('/:id', itemsController.getItemById);
