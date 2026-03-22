@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { getJwtSecret } = require('../middleware/authMiddleware');
+const { authenticate, getJwtSecret } = require('../middleware/authMiddleware');
 const contactController = require('../controllers/contactController');
 
 const router = express.Router();
@@ -26,5 +26,7 @@ function optionalAuthenticate(req, _res, next) {
 
 // Public submit (auth optional)
 router.post('/', optionalAuthenticate, contactController.create);
+router.get('/my-notifications', authenticate, contactController.myResolvedNotifications);
+router.patch('/my-notifications/:id/seen', authenticate, contactController.markNotificationSeen);
 
 module.exports = router;
