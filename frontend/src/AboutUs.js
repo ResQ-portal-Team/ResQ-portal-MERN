@@ -5,50 +5,50 @@ const AboutUs = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <nav className="bg-white shadow-sm p-4 flex flex-wrap justify-between items-center gap-3 px-8">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
+      <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white p-4 px-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
-          <span className="text-xl font-bold text-gray-800 tracking-tight text-center">Portal</span>
+          <span className="text-xl font-bold text-gray-800 tracking-tight text-center dark:text-slate-100">Portal</span>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"
             onClick={() => navigate('/contact')}
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
           >
             Contact Us
           </button>
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
           >
             Dashboard
           </button>
         </div>
       </nav>
 
-      <main className="max-w-3xl mx-auto px-6 py-12 md:py-16">
-        <p className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-2">About</p>
-        <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">ResQ Portal</h1>
-        <p className="text-lg text-gray-600 leading-relaxed mb-10">
+      <main className="mx-auto max-w-3xl px-6 py-12 md:py-16">
+        <p className="mb-2 text-sm font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">About</p>
+        <h1 className="mb-4 text-3xl font-black text-gray-900 dark:text-white md:text-4xl">ResQ Portal</h1>
+        <p className="mb-10 text-lg leading-relaxed text-gray-600 dark:text-slate-400">
           We are the SLIIT community hub for lost and found—built so students and staff can report items, browse matches,
           and get belongings back with less friction.
         </p>
 
         <div className="space-y-8">
-          <section className="bg-white rounded-2xl shadow border border-gray-100 p-6 md:p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-3">Our mission</h2>
-            <p className="text-gray-600 leading-relaxed">
+          <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-900 md:p-8">
+            <h2 className="mb-3 text-xl font-bold text-gray-900 dark:text-white">Our mission</h2>
+            <p className="leading-relaxed text-gray-600 dark:text-slate-400">
               Campus life moves fast. When something goes missing, clear reporting and a single place to look make all
               the difference. ResQ Portal keeps active and returned listings organized so the community can help itself.
             </p>
           </section>
 
-          <section className="bg-white rounded-2xl shadow border border-gray-100 p-6 md:p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-3">What you can do here</h2>
-            <ul className="text-gray-600 space-y-3 list-disc list-inside leading-relaxed">
+          <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-900 md:p-8">
+            <h2 className="mb-3 text-xl font-bold text-gray-900 dark:text-white">What you can do here</h2>
+            <ul className="list-inside list-disc space-y-3 leading-relaxed text-gray-600 dark:text-slate-400">
               <li>Report lost or found items with details and optional photos.</li>
               <li>Browse the board for items that might be yours—or someone else&apos;s.</li>
               <li>Use the Community Hub for events and shared updates.</li>

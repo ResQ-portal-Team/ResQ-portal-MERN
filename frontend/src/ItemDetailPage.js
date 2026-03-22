@@ -54,7 +54,7 @@ const ItemDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600 font-semibold">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 font-semibold text-gray-600 dark:bg-slate-950 dark:text-slate-300">
         Loading item details...
       </div>
     );
@@ -62,12 +62,12 @@ const ItemDetailPage = () => {
 
   if (error || !item) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-4xl mx-auto">
-          <button onClick={() => navigate('/dashboard')} className="text-blue-700 font-semibold hover:underline mb-4">
+      <div className="min-h-screen bg-gray-50 p-6 dark:bg-slate-950">
+        <div className="mx-auto max-w-4xl">
+          <button onClick={() => navigate('/dashboard')} className="mb-4 font-semibold text-blue-700 hover:underline dark:text-blue-400">
             ← Back to Dashboard
           </button>
-          <div className="bg-white border border-red-100 text-red-700 rounded-2xl p-6">
+          <div className="rounded-2xl border border-red-100 bg-white p-6 text-red-700 dark:border-red-900/50 dark:bg-slate-900 dark:text-red-400">
             {error || 'Item not found.'}
           </div>
         </div>
@@ -76,15 +76,15 @@ const ItemDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto">
-        <button onClick={() => navigate('/dashboard')} className="text-blue-700 font-semibold hover:underline mb-4">
+    <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100 sm:p-6">
+      <div className="mx-auto max-w-6xl">
+        <button onClick={() => navigate('/dashboard')} className="mb-4 font-semibold text-blue-700 hover:underline dark:text-blue-400">
           ← Back to Dashboard
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="lg:col-span-2 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-            <div className="relative h-64 sm:h-80 bg-gray-100">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900 lg:col-span-2">
+            <div className="relative h-64 bg-gray-100 dark:bg-slate-800 sm:h-80">
               {item.image ? (
                 <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
               ) : (
@@ -99,35 +99,35 @@ const ItemDetailPage = () => {
 
             <div className="p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
-                <h1 className="text-3xl font-black text-gray-900">{item.title}</h1>
-                <span className="text-xs uppercase font-bold tracking-wider text-gray-500">{item.category}</span>
+                <h1 className="text-3xl font-black text-gray-900 dark:text-white">{item.title}</h1>
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">{item.category}</span>
               </div>
-              <p className="text-gray-700 leading-relaxed mb-6">{item.description}</p>
+              <p className="mb-6 leading-relaxed text-gray-700 dark:text-slate-300">{item.description}</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 uppercase text-xs font-bold">Location</p>
-                  <p className="text-gray-800 font-semibold mt-1">{item.location}</p>
+                <div className="rounded-xl bg-gray-50 p-4 dark:bg-slate-800">
+                  <p className="text-xs font-bold uppercase text-gray-400 dark:text-slate-500">Location</p>
+                  <p className="mt-1 font-semibold text-gray-800 dark:text-slate-200">{item.location}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 uppercase text-xs font-bold">
+                <div className="rounded-xl bg-gray-50 p-4 dark:bg-slate-800">
+                  <p className="text-xs font-bold uppercase text-gray-400 dark:text-slate-500">
                     {item.type === 'found' ? 'Date found' : 'Date lost'}
                   </p>
-                  <p className="text-gray-800 font-semibold mt-1">
+                  <p className="mt-1 font-semibold text-gray-800 dark:text-slate-200">
                     {item.date ? formatItemDate(item.date) : 'Not specified'}
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 uppercase text-xs font-bold">Listed on</p>
-                  <p className="text-gray-800 font-semibold mt-1">{formatItemDate(item.createdAt)}</p>
+                <div className="rounded-xl bg-gray-50 p-4 dark:bg-slate-800">
+                  <p className="text-xs font-bold uppercase text-gray-400 dark:text-slate-500">Listed on</p>
+                  <p className="mt-1 font-semibold text-gray-800 dark:text-slate-200">{formatItemDate(item.createdAt)}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 uppercase text-xs font-bold">Status</p>
-                  <p className="text-gray-800 font-semibold mt-1">{item.status || 'active'}</p>
+                <div className="rounded-xl bg-gray-50 p-4 dark:bg-slate-800">
+                  <p className="text-xs font-bold uppercase text-gray-400 dark:text-slate-500">Status</p>
+                  <p className="mt-1 font-semibold text-gray-800 dark:text-slate-200">{item.status || 'active'}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-400 uppercase text-xs font-bold">Reported By</p>
-                  <p className="text-gray-800 font-semibold mt-1">
+                <div className="rounded-xl bg-gray-50 p-4 dark:bg-slate-800">
+                  <p className="text-xs font-bold uppercase text-gray-400 dark:text-slate-500">Reported By</p>
+                  <p className="mt-1 font-semibold text-gray-800 dark:text-slate-200">
                     {item.postedBy?.nickname || item.postedBy?.realName || 'Unknown user'}
                   </p>
                 </div>
@@ -135,9 +135,9 @@ const ItemDetailPage = () => {
             </div>
           </section>
 
-          <aside className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Chat</h2>
-            <p className="text-sm text-gray-500 mb-6">
+          <aside className="rounded-2xl border border-gray-100 bg-white p-6 shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <h2 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">Chat</h2>
+            <p className="mb-6 text-sm text-gray-500 dark:text-slate-400">
               Chat system will be added later. Use this button placeholder for now.
             </p>
             <button

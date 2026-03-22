@@ -3,170 +3,309 @@ import { useNavigate, useParams } from 'react-router-dom';
 import CommunityHubHeader from './CommunityHubHeader';
 import { API_BASE } from '../config';
 import { youtubeEmbedSrcWithAutoplay, youtubeEmbedUrl } from './communityHubVideo';
-import './CommunityHub.css';
+import { useTheme } from '../ThemeContext';
 
-const CommunityHubEventDetail = () => {
+/* ─── Design tokens (dark = current hub aesthetic; light = readable on white) ─ */
+const T_DARK = {
+  bg:        '#080b10',
+  surface:   '#0e1117',
+  surfaceAlt:'#131720',
+  border:    'rgba(255,255,255,0.07)',
+  text:      '#e6e1d8',
+  muted:     '#7a7690',
+  hint:      '#3e3d4e',
+  factValue: '#cdc9d8',
+  title:     '#f0ece3',
+  descBg:    '#0f1218',
+  descText:  '#ada9bc',
+  backHover: 'rgba(255,255,255,0.25)',
+  spinnerBd: 'rgba(255,255,255,0.07)',
+  videoLine: 'rgba(255,255,255,0.04)',
+  serif:     "'Playfair Display', 'Georgia', serif",
+  sans:      "'DM Sans', 'Helvetica Neue', sans-serif",
+};
+
+const T_LIGHT = {
+  bg:        '#f8fafc',
+  surface:   '#ffffff',
+  surfaceAlt:'#f1f5f9',
+  border:    'rgba(15,23,42,0.1)',
+  text:      '#0f172a',
+  muted:     '#64748b',
+  hint:      '#64748b',
+  factValue: '#334155',
+  title:     '#0f172a',
+  descBg:    '#ffffff',
+  descText:  '#475569',
+  backHover: 'rgba(15,23,42,0.25)',
+  spinnerBd: 'rgba(15,23,42,0.12)',
+  videoLine: 'rgba(15,23,42,0.08)',
+  serif:     "'Playfair Display', 'Georgia', serif",
+  sans:      "'DM Sans', 'Helvetica Neue', sans-serif",
+};
+
+const getGlobalCss = (tk) => `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes spin   { to { transform: rotate(360deg); } }
+  .back-btn:hover   { border-color: ${tk.backHover} !important; color: ${tk.text} !important; }
+  .fact-row + .fact-row { border-top: 0.5px solid ${tk.border}; }
+  @media (max-width: 720px) {
+    .layout-grid   { grid-template-columns: 1fr !important; }
+    .sidebar       { position: static !important; }
+  }
+`;
+
+/* ─── Helpers ────────────────────────────────────────────────────────────────── */
+const fmt = (d) => {
+  if (!d) return null;
+  try {
+    return new Date(d).toLocaleString(undefined, {
+      weekday:'short', month:'short', day:'numeric',
+      year:'numeric', hour:'2-digit', minute:'2-digit',
+    });
+  } catch { return null; }
+};
+
+/* ─── Spinner ────────────────────────────────────────────────────────────────── */
+const Spinner = ({ tk }) => (
+  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'72px 0', color:tk.muted, fontSize:14, fontFamily:tk.sans }}>
+    <div style={{ width:28, height:28, border:`2px solid ${tk.spinnerBd}`, borderTop:'2px solid #6c5ce7', borderRadius:'50%', animation:'spin 0.75s linear infinite' }} />
+    Loading event…
+  </div>
+);
+
+/* ─── FactRow ────────────────────────────────────────────────────────────────── */
+const FactRow = ({ icon, label, value, tk }) =>
+  value ? (
+    <div className="fact-row" style={{ display:'flex', alignItems:'flex-start', gap:11, padding:'12px 0' }}>
+      <span style={{ fontSize:14, marginTop:2, flexShrink:0, lineHeight:1 }}>{icon}</span>
+      <div>
+        <p style={{ margin:'0 0 3px', fontSize:10, fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:tk.hint }}>{label}</p>
+        <p style={{ margin:0, fontSize:13.5, color:tk.factValue, lineHeight:1.55 }}>{value}</p>
+      </div>
+    </div>
+  ) : null;
+
+/* ─── Main ───────────────────────────────────────────────────────────────────── */
+export default function CommunityHubEventDetail() {
+  const { theme } = useTheme();
+  const tk = theme === 'dark' ? T_DARK : T_LIGHT;
   const { eventId } = useParams();
-  const navigate = useNavigate();
-  const [event, setEvent] = useState(null);
+  const navigate    = useNavigate();
+  const [event, setEvent]     = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const directVideoRef = useRef(null);
+  const [error, setError]     = useState('');
+  const videoRef = useRef(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let dead = false;
     (async () => {
-      setError('');
-      setLoading(true);
-      setEvent(null);
+      setError(''); setLoading(true); setEvent(null);
       try {
-        const res = await fetch(`${API_BASE}/api/community-events/${eventId}`);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || 'Could not load this event.');
-        if (!cancelled) setEvent(data.event);
+        const r = await fetch(`${API_BASE}/api/community-events/${eventId}`);
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.message || 'Could not load event.');
+        if (!dead) setEvent(d.event);
       } catch (e) {
-        if (!cancelled) setError(e.message || 'Could not load this event.');
+        if (!dead) setError(e.message || 'Could not load event.');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!dead) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { dead = true; };
   }, [eventId]);
 
   const ytEmbed = event?.videoUrl ? youtubeEmbedUrl(event.videoUrl) : null;
+  const ytSrc   = ytEmbed ? youtubeEmbedSrcWithAutoplay(ytEmbed) : null;
 
   useEffect(() => {
     if (!event?.videoUrl || ytEmbed) return;
-    const el = directVideoRef.current;
+    const el = videoRef.current;
     if (!el) return;
     el.muted = false;
-    const p = el.play();
-    if (p && typeof p.catch === 'function') {
-      p.catch(() => {});
-    }
+    el.play?.().catch?.(() => {});
   }, [event, ytEmbed]);
 
-  const formatWhen = (d) => {
-    if (!d) return '—';
-    try {
-      return new Date(d).toLocaleString();
-    } catch {
-      return '—';
-    }
-  };
-
-  const ytSrc = ytEmbed ? youtubeEmbedSrcWithAutoplay(ytEmbed) : null;
+  const when = event
+    ? [fmt(event.startDateTime), event.endDateTime ? fmt(event.endDateTime) : null].filter(Boolean).join(' – ')
+    : null;
 
   return (
-    <div className="community-hub-content-page font-sans">
+    <div style={{ minHeight:'100vh', background:tk.bg, color:tk.text, fontFamily:tk.sans }}>
+      <style>{getGlobalCss(tk)}</style>
       <CommunityHubHeader sticky />
 
-      <main className="community-hub-content community-hub-detail" aria-label="Event details">
+      <main style={{ width:'100%', maxWidth:'none', margin:0, padding:'28px 0 80px 16px', boxSizing:'border-box' }}>
+
+        {/* Back */}
         <button
           type="button"
-          className="community-hub-back"
+          className="back-btn"
           onClick={() => navigate('/community-hub/content')}
+          style={{
+            display:'inline-flex', alignItems:'center', gap:7,
+            background:'none', border:`0.5px solid ${tk.border}`,
+            borderRadius:8, color:tk.muted, fontSize:13,
+            fontFamily:tk.sans, fontWeight:500, padding:'7px 15px',
+            cursor:'pointer', marginBottom:28,
+            transition:'border-color .18s, color .18s',
+          }}
         >
           ← Back to events
         </button>
 
-        {loading && <p className="community-hub-events-empty">Loading event…</p>}
-        {error && <p className="community-hub-events-error" role="alert">{error}</p>}
+        {/* States */}
+        {loading && <Spinner tk={tk} />}
 
-        {!loading && !error && event && (
-          <article className="community-hub-detail-article">
-            {event.finished && (
-              <div className="community-hub-detail-finished-banner" role="status">
-                Finished event
-                {event.finishedByManual && !event.finishedByDate
-                  ? ' · Closed early by admin'
-                  : ' · Start date has passed'}
-              </div>
-            )}
-            <header
-              className={`community-hub-detail-header${event.imageUrl ? '' : ' community-hub-detail-header--no-banner'}`}
-            >
-              {event.imageUrl && (
-                <img
-                  className="community-hub-detail-banner-thumb"
-                  src={event.imageUrl}
-                  alt=""
-                  loading="eager"
-                />
-              )}
-              <div className="community-hub-detail-headline">
-                <p className="community-hub-event-meta">{event.category || 'Event'}</p>
-                <h1 className="community-hub-detail-title">{event.title}</h1>
-              </div>
-            </header>
-
-            {event.videoUrl && (
-              <section className="community-hub-detail-video-stage" aria-label="Event video">
-                <div className="community-hub-detail-video-stage-inner">
-                  <p className="community-hub-detail-video-label">Event video</p>
-                  <div className="community-hub-detail-video-frame">
-                    {ytSrc ? (
-                      <iframe
-                        title={`Video: ${event.title}`}
-                        src={ytSrc}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                        allowFullScreen
-                      />
-                    ) : (
-                      <video
-                        ref={directVideoRef}
-                        key={event.videoUrl}
-                        src={event.videoUrl}
-                        controls
-                        playsInline
-                        autoPlay
-                        onLoadedData={(e) => {
-                          e.currentTarget.muted = false;
-                          e.currentTarget.play().catch(() => {});
-                        }}
-                      />
-                    )}
-                  </div>
-                  <p className="community-hub-video-hint">
-                    Autoplay tries to play with sound. If your browser blocks it, tap the video once to
-                    start.
-                  </p>
-                </div>
-              </section>
-            )}
-
-            <div className="community-hub-detail-inner">
-              <p className="community-hub-event-desc community-hub-detail-desc">{event.description}</p>
-
-              <div className="community-hub-detail-facts">
-                <p className="community-hub-event-detail">
-                  <strong>When:</strong> {formatWhen(event.startDateTime)}
-                  {event.endDateTime ? ` – ${formatWhen(event.endDateTime)}` : ''}
-                </p>
-                <p className="community-hub-event-detail">
-                  <strong>Where:</strong> {event.location}
-                </p>
-                <p className="community-hub-event-detail">
-                  <strong>Organizer:</strong> {event.organizer}
-                </p>
-                {event.contactInfo && (
-                  <p className="community-hub-event-detail">
-                    <strong>Contact:</strong> {event.contactInfo}
-                  </p>
-                )}
-              </div>
-            </div>
-          </article>
+        {!loading && error && (
+          <p role="alert" style={{
+            background:'rgba(239,68,68,0.08)', border:'0.5px solid rgba(239,68,68,0.2)',
+            borderRadius:10, color:'#ef4444', fontSize:14, padding:'13px 18px', margin:0,
+          }}>
+            {error}
+          </p>
         )}
 
         {!loading && !error && !event && (
-          <p className="community-hub-events-empty">Event not found.</p>
+          <p style={{ color:tk.muted, fontSize:15, textAlign:'center', padding:'60px 0' }}>
+            Event not found.
+          </p>
+        )}
+
+        {/* Main content */}
+        {!loading && !error && event && (
+          <article style={{ animation:'fadeUp .35s ease both' }}>
+
+            {/* ┌──────────────────────────────────────────────────────┐
+                │  BODY: video (primary) + sidebar                     │
+                └──────────────────────────────────────────────────────┘ */}
+            <div
+              className="layout-grid"
+              style={{ display:'grid', gridTemplateColumns:'1fr 252px', gap:18, alignItems:'start' }}
+            >
+
+              {/* ── Video column ── */}
+              <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+                {/* Video player */}
+                {event.videoUrl ? (
+                  <section aria-label="Event video">
+                    <div style={{
+                      position:'relative', paddingTop:'56.25%',
+                      borderRadius:13, overflow:'hidden',
+                      background:'#000',
+                      border:'0.5px solid rgba(108,92,231,0.18)',
+                      outline:`1px solid ${tk.videoLine}`,
+                    }}>
+                      {ytSrc ? (
+                        <iframe
+                          title={`Video: ${event.title}`}
+                          src={ytSrc}
+                          style={{ position:'absolute', inset:0, width:'100%', height:'100%', border:'none' }}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <video
+                          ref={videoRef}
+                          key={event.videoUrl}
+                          src={event.videoUrl}
+                          controls
+                          playsInline
+                          autoPlay
+                          style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain' }}
+                          onLoadedData={(e) => {
+                            e.currentTarget.muted = false;
+                            e.currentTarget.play?.().catch?.(() => {});
+                          }}
+                        />
+                      )}
+                    </div>
+                    <p style={{ margin:'7px 0 0', fontSize:11.5, color:tk.hint, fontStyle:'italic' }}>
+                      Autoplay with sound — tap the video if your browser blocks it.
+                    </p>
+                  </section>
+                ) : (
+                  <div style={{
+                    width:'100%',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    aspectRatio:'16/9', borderRadius:13,
+                    background:tk.surfaceAlt, border:`0.5px solid ${tk.border}`,
+                    color:tk.hint, fontSize:13,
+                  }}>
+                    No video available
+                  </div>
+                )}
+
+                {/* Description */}
+                {event.description && (
+                  <div style={{
+                    background:tk.descBg, border:`0.5px solid ${tk.border}`,
+                    borderRadius:12, padding:'18px 20px',
+                  }}>
+                    <p style={{ margin:0, fontSize:14.5, lineHeight:1.8, color:tk.descText }}>
+                      {event.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Sidebar: event details ── */}
+              <aside
+                className="sidebar"
+                style={{
+                  background:tk.surface, border:`0.5px solid ${tk.border}`,
+                  borderRadius:12, padding:'4px 16px 12px',
+                  position:'sticky', top:20,
+                }}
+                aria-label="Event information"
+              >
+                {event.imageUrl && (
+                  <div style={{
+                    margin:'0 -16px 14px', borderRadius:10, overflow:'hidden',
+                    border:`0.5px solid ${tk.border}`,
+                    background:tk.surfaceAlt,
+                  }}>
+                    <img
+                      src={event.imageUrl}
+                      alt=""
+                      loading="eager"
+                      style={{ width:'100%', aspectRatio:'16 / 10', objectFit:'cover', display:'block' }}
+                    />
+                  </div>
+                )}
+                <h1 style={{
+                  margin:'0 0 14px', fontFamily:tk.serif, fontWeight:700,
+                  fontSize:'clamp(18px,2.2vw,24px)', lineHeight:1.25, color:tk.title,
+                }}>
+                  {event.title}
+                </h1>
+                <p style={{
+                  margin:'0 0 2px', fontSize:10, fontWeight:700,
+                  letterSpacing:'0.09em', textTransform:'uppercase', color:tk.hint,
+                }}>
+                  Details
+                </p>
+                <FactRow icon="🏷" label="Category" value={event.category || 'Event'} tk={tk} />
+                {event.finished && (
+                  <FactRow
+                    icon="⏱"
+                    label="Status"
+                    value={event.finishedByManual && !event.finishedByDate ? 'Closed by admin' : 'Event ended'}
+                    tk={tk}
+                  />
+                )}
+                <FactRow icon="🗓" label="When"      value={when} tk={tk} />
+                <FactRow icon="📍" label="Where"     value={event.location} tk={tk} />
+                <FactRow icon="👤" label="Organizer" value={event.organizer} tk={tk} />
+                <FactRow icon="✉️" label="Contact"   value={event.contactInfo} tk={tk} />
+              </aside>
+
+            </div>
+          </article>
         )}
       </main>
     </div>
   );
-};
-
-export default CommunityHubEventDetail;
+}

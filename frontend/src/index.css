@@ -31,3 +31,15 @@
 html {
   scroll-behavior: smooth;
 }
+
+html.dark {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+}
+
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}

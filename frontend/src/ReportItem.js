@@ -125,7 +125,7 @@ const ReportItem = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans p-4 sm:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100 sm:p-6">
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => navigate('/dashboard')}
@@ -134,7 +134,7 @@ const ReportItem = () => {
           ← Back to Dashboard
         </button>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:p-8">
           <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Report a Lost or Found Item</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -145,7 +145,7 @@ const ReportItem = () => {
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   <option value="lost">Lost item</option>
                   <option value="found">Found item</option>
@@ -157,7 +157,7 @@ const ReportItem = () => {
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   <option value="">Select a category</option>
                   {ITEM_CATEGORY_GROUPS.map((group) => (
@@ -183,7 +183,7 @@ const ReportItem = () => {
                 value={formData.incidentDate}
                 max={todayIsoDateLocal()}
                 onChange={handleChange}
-                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -195,7 +195,7 @@ const ReportItem = () => {
                 value={formData.title}
                 onChange={handleChange}
                 placeholder="e.g. Black backpack"
-                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -207,7 +207,7 @@ const ReportItem = () => {
                 value={formData.location}
                 onChange={handleChange}
                 placeholder="Main hall, library, Lab 01..."
-                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -219,7 +219,7 @@ const ReportItem = () => {
                 onChange={handleChange}
                 placeholder="Identifying details: color, brand, marks, when and where last seen, etc."
                 rows={6}
-                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none resize-y min-h-[140px]"
+                className="min-h-[140px] w-full resize-y rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
 
@@ -229,7 +229,7 @@ const ReportItem = () => {
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
-                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               />
               {imageFile && <p className="text-xs text-gray-500 mt-1">Selected: {imageFile.name}</p>}
             </div>
