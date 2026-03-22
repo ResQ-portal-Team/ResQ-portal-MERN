@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Item = require('../models/Item');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -72,11 +73,19 @@ exports.register = async (req, res) => {
 // Get stats for dashboard
 exports.getStats = async (req, res) => {
     try {
+        const reported = await Item.countDocuments();
+        const returned = await Item.countDocuments({ status: 'returned' });
+        const pending = await Item.countDocuments({ status: 'pending' });
+        const totalUsers = await User.countDocuments();
+
+        const trustScoreValue = reported > 0 ? Math.round((returned / reported) * 100) : 0;
+
         res.status(200).json({
-            reported: 0,
-            returned: 0,
-            trustScore: "95%",
-            events: 5
+            reported,
+            returned,
+            trustScore: `${trustScoreValue}%`,
+            events: pending,
+            users: totalUsers
         });
     } catch (err) {
         res.status(500).json({ message: "Error fetching statistics." });
@@ -87,7 +96,7 @@ exports.getStats = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const jwtSecret = process.env.JWT_SECRET;
+        const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "dev_jwt_secret_change_me" : null);
 
         if (!jwtSecret) {
             console.error("Login Error: JWT_SECRET is not configured.");
