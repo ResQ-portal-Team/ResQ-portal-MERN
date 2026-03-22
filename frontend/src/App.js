@@ -11,6 +11,7 @@ import ReportItem from './ReportItem';
 import AdminLogin from './AdminLogin';
 import AdminDashboard from './AdminDashboard';
 import ProtectedAdminRoute from './ProtectedAdminRoute';
+import ItemDetailPage from './ItemDetailPage';
 
 function App() {
   return (
