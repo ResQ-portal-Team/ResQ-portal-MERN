@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE, authHeaders } from './config';
+import { PollChartsGrid, downloadPollReportPdf } from './PollBreakdownReport';
 
 const parseJson = async (res) => {
   const t = await res.text();
@@ -60,6 +61,10 @@ const AdminDashboard = () => {
   const [contacts, setContacts] = useState([]);
   const [communityEventsUpcoming, setCommunityEventsUpcoming] = useState([]);
   const [communityEventsFinished, setCommunityEventsFinished] = useState([]);
+  const [pollEvents, setPollEvents] = useState([]);
+  const [pollDetailOpen, setPollDetailOpen] = useState(false);
+  const [pollDetailLoading, setPollDetailLoading] = useState(false);
+  const [pollDetail, setPollDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionId, setActionId] = useState('');
@@ -106,17 +111,42 @@ const AdminDashboard = () => {
     setCommunityEventsFinished(data.finished || []);
   }, []);
 
+  const loadPollSummary = useCallback(async () => {
+    const res = await fetch(`${API_BASE}/api/admin/event-polls/summary`, { headers: authHeaders() });
+    const data = await parseJson(res);
+    if (!res.ok) throw new Error(data.message || 'Failed to load poll summary');
+    setPollEvents(data.events || []);
+  }, []);
+
   const refresh = useCallback(async () => {
     setError('');
     setLoading(true);
     try {
-      await Promise.all([loadUsers(), loadItems(), loadCommunityEvents(), loadContacts()]);
+      await Promise.all([loadUsers(), loadItems(), loadCommunityEvents(), loadContacts(), loadPollSummary()]);
     } catch (e) {
       setError(e.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [loadUsers, loadItems, loadCommunityEvents, loadContacts]);
+  }, [loadUsers, loadItems, loadCommunityEvents, loadContacts, loadPollSummary]);
+
+  const openPollDetail = async (eventId) => {
+    setPollDetailOpen(true);
+    setPollDetail(null);
+    setPollDetailLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/event-polls/${eventId}`, { headers: authHeaders() });
+      const data = await parseJson(res);
+      if (!res.ok) throw new Error(data.message || 'Failed to load poll detail');
+      setPollDetail(data);
+    } catch (e) {
+      setError(e.message || 'Failed to load poll detail');
+      setPollDetailOpen(false);
+    } finally {
+      setPollDetailLoading(false);
+    }
+  };
 
   useEffect(() => {
     refresh();
@@ -454,8 +484,10 @@ const AdminDashboard = () => {
           <button
             type="button"
             onClick={() => setTab('users')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px ${
-              tab === 'users' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'
+            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
+              tab === 'users'
+                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             User management
@@ -463,8 +495,10 @@ const AdminDashboard = () => {
           <button
             type="button"
             onClick={() => setTab('items')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px ${
-              tab === 'items' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'
+            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
+              tab === 'items'
+                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             Lost &amp; found
@@ -472,17 +506,32 @@ const AdminDashboard = () => {
           <button
             type="button"
             onClick={() => setTab('community')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px ${
-              tab === 'community' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'
+            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
+              tab === 'community'
+                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             Community Hub
           </button>
           <button
             type="button"
+            onClick={() => setTab('polls')}
+            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
+              tab === 'polls'
+                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            Event polls
+          </button>
+          <button
+            type="button"
             onClick={() => setTab('contacts')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px ${
-              tab === 'contacts' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'
+            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
+              tab === 'contacts'
+                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             Contact Us
@@ -490,15 +539,71 @@ const AdminDashboard = () => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-800 text-sm font-medium">{error}</div>
+          <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm font-medium dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+            {error}
+          </div>
         )}
 
         {loading ? (
-          <p className="text-slate-500">Loading…</p>
+          <p className="text-slate-500 dark:text-slate-400">Loading…</p>
+        ) : tab === 'polls' ? (
+          <div className="space-y-6">
+            <section className="rounded-xl border border-slate-100 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-900">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Event poll management</h2>
+              <p className="text-sm text-slate-500 mb-4 dark:text-slate-400">
+                Feedback submitted from Community Hub event pages (attendance, rating, experience, and suggestions).
+              </p>
+              <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-700">
+                <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+                  <thead className="bg-slate-100 text-left dark:bg-slate-800/90 dark:text-slate-200">
+                    <tr>
+                      <th className="p-3 font-semibold">Event</th>
+                      <th className="p-3 font-semibold">Started</th>
+                      <th className="p-3 font-semibold">Responses</th>
+                      <th className="p-3 font-semibold">Avg rating</th>
+                      <th className="p-3 font-semibold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pollEvents.map((row) => (
+                      <tr
+                        key={String(row.eventId)}
+                        className="border-t border-slate-100 dark:border-slate-700/60 dark:hover:bg-slate-800/40"
+                      >
+                        <td className="p-3 max-w-xs font-medium">{row.title}</td>
+                        <td className="p-3 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                          {row.startDateTime ? formatEventWhen(row.startDateTime) : '—'}
+                        </td>
+                        <td className="p-3">{row.responseCount}</td>
+                        <td className="p-3">
+                          {row.avgRating != null ? `${row.avgRating} / 5` : '—'}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => openPollDetail(row.eventId)}
+                            disabled={pollDetailLoading}
+                            className="text-indigo-600 font-semibold hover:underline disabled:opacity-50 dark:text-indigo-400"
+                          >
+                            View breakdown
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {pollEvents.length === 0 && (
+                  <p className="p-6 text-slate-500 text-center dark:text-slate-400">
+                    No poll responses yet. They appear after visitors submit feedback on an event page.
+                  </p>
+                )}
+              </div>
+            </section>
+          </div>
         ) : tab === 'users' ? (
           <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-100 text-left">
+            <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+              <thead className="bg-slate-100 text-left dark:bg-slate-800/90 dark:text-slate-200">
                 <tr>
                   <th className="p-3 font-semibold">Student ID</th>
                   <th className="p-3 font-semibold">Name</th>
@@ -509,17 +614,20 @@ const AdminDashboard = () => {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u._id} className="border-t border-slate-100">
+                  <tr
+                    key={u._id}
+                    className="border-t border-slate-100 dark:border-slate-700/60 dark:hover:bg-slate-800/50"
+                  >
                     <td className="p-3">{u.studentId}</td>
                     <td className="p-3">{u.realName}</td>
                     <td className="p-3">{u.nickname}</td>
-                    <td className="p-3">{u.email}</td>
+                    <td className="p-3 text-slate-700 dark:text-slate-300">{u.email}</td>
                     <td className="p-3 text-right space-x-2">
                       <button
                         type="button"
                         onClick={() => openEdit(u)}
                         disabled={Boolean(actionId)}
-                        className="text-blue-600 font-semibold hover:underline disabled:opacity-50"
+                        className="text-blue-600 font-semibold hover:underline disabled:opacity-50 dark:text-blue-400"
                       >
                         Edit
                       </button>
@@ -527,7 +635,7 @@ const AdminDashboard = () => {
                         type="button"
                         onClick={() => handleDeleteUser(u._id)}
                         disabled={Boolean(actionId)}
-                        className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                        className="text-red-600 font-semibold hover:underline disabled:opacity-50 dark:text-red-400"
                       >
                         {actionId === `u-${u._id}` ? '…' : 'Delete'}
                       </button>
@@ -536,12 +644,14 @@ const AdminDashboard = () => {
                 ))}
               </tbody>
             </table>
-            {users.length === 0 && <p className="p-6 text-slate-500 text-center">No registered users.</p>}
+            {users.length === 0 && (
+              <p className="p-6 text-slate-500 text-center dark:text-slate-400">No registered users.</p>
+            )}
           </div>
         ) : tab === 'items' ? (
           <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-100 text-left">
+            <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+              <thead className="bg-slate-100 text-left dark:bg-slate-800/90 dark:text-slate-200">
                 <tr>
                   <th className="p-3 font-semibold">Title</th>
                   <th className="p-3 font-semibold">Type</th>
@@ -553,20 +663,23 @@ const AdminDashboard = () => {
               </thead>
               <tbody>
                 {items.map((it) => (
-                  <tr key={it._id} className="border-t border-slate-100">
+                  <tr
+                    key={it._id}
+                    className="border-t border-slate-100 dark:border-slate-700/60 dark:hover:bg-slate-800/50"
+                  >
                     <td className="p-3 max-w-xs truncate" title={it.title}>
                       {it.title}
                     </td>
                     <td className="p-3 capitalize">{it.type}</td>
                     <td className="p-3">{it.category}</td>
                     <td className="p-3">{it.status}</td>
-                    <td className="p-3">{formatAuthor(it.postedBy)}</td>
+                    <td className="p-3 text-slate-700 dark:text-slate-300">{formatAuthor(it.postedBy)}</td>
                     <td className="p-3 text-right">
                       <button
                         type="button"
                         onClick={() => handleDeleteItem(it._id)}
                         disabled={Boolean(actionId)}
-                        className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                        className="text-red-600 font-semibold hover:underline disabled:opacity-50 dark:text-red-400"
                       >
                         {actionId === `i-${it._id}` ? '…' : 'Delete'}
                       </button>
@@ -575,12 +688,14 @@ const AdminDashboard = () => {
                 ))}
               </tbody>
             </table>
-            {items.length === 0 && <p className="p-6 text-slate-500 text-center">No items yet.</p>}
+            {items.length === 0 && (
+              <p className="p-6 text-slate-500 text-center dark:text-slate-400">No items yet.</p>
+            )}
           </div>
         ) : tab === 'contacts' ? (
           <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-100 text-left">
+            <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+              <thead className="bg-slate-100 text-left dark:bg-slate-800/90 dark:text-slate-200">
                 <tr>
                   <th className="p-3 font-semibold">From</th>
                   <th className="p-3 font-semibold">Email</th>
@@ -593,13 +708,22 @@ const AdminDashboard = () => {
               </thead>
               <tbody>
                 {contacts.map((c) => (
-                  <tr key={c._id} className="border-t border-slate-100">
+                  <tr
+                    key={c._id}
+                    className="border-t border-slate-100 dark:border-slate-700/60 dark:hover:bg-slate-800/50"
+                  >
                     <td className="p-3">{c.name}</td>
-                    <td className="p-3">{c.email}</td>
-                    <td className="p-3 max-w-xs truncate" title={c.subject}>{c.subject}</td>
-                    <td className="p-3 max-w-md truncate" title={c.message}>{c.message}</td>
+                    <td className="p-3 text-slate-700 dark:text-slate-300">{c.email}</td>
+                    <td className="p-3 max-w-xs truncate" title={c.subject}>
+                      {c.subject}
+                    </td>
+                    <td className="p-3 max-w-md truncate text-slate-700 dark:text-slate-300" title={c.message}>
+                      {c.message}
+                    </td>
                     <td className="p-3 capitalize">{c.status}</td>
-                    <td className="p-3 whitespace-nowrap">{new Date(c.createdAt).toLocaleString()}</td>
+                    <td className="p-3 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                      {new Date(c.createdAt).toLocaleString()}
+                    </td>
                     <td className="p-3 text-right space-x-2">
                       {c.status !== 'resolved' && (
                         <button
@@ -621,7 +745,7 @@ const AdminDashboard = () => {
                             }
                           }}
                           disabled={Boolean(actionId)}
-                          className="text-emerald-700 font-semibold hover:underline disabled:opacity-50"
+                          className="text-emerald-700 font-semibold hover:underline disabled:opacity-50 dark:text-emerald-400"
                         >
                           {actionId === `c-res-${c._id}` ? '…' : 'Mark resolved'}
                         </button>
@@ -646,7 +770,7 @@ const AdminDashboard = () => {
                           }
                         }}
                         disabled={Boolean(actionId)}
-                        className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                        className="text-red-600 font-semibold hover:underline disabled:opacity-50 dark:text-red-400"
                       >
                         {actionId === `c-del-${c._id}` ? '…' : 'Delete'}
                       </button>
@@ -655,22 +779,24 @@ const AdminDashboard = () => {
                 ))}
               </tbody>
             </table>
-            {contacts.length === 0 && <p className="p-6 text-slate-500 text-center">No messages yet.</p>}
+            {contacts.length === 0 && (
+              <p className="p-6 text-slate-500 text-center dark:text-slate-400">No messages yet.</p>
+            )}
           </div>
         ) : (
           <div className="space-y-10">
             <section className="rounded-xl border border-slate-100 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-900">
-              <h2 className="text-lg font-bold text-slate-800 mb-1">Create community event</h2>
-              <p className="text-sm text-slate-500 mb-6">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Create community event</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                 Post workshops, seminars, campus events, and more. Banner and video uploads require Cloudinary (CLOUDINARY_URL) on the server.
               </p>
 
               <form onSubmit={handleCreateCommunityEvent} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="md:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Event title *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Event title *</label>
                   <input
                     required
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     placeholder='e.g. SLIIT Tech Talk 2026'
                     value={eventForm.title}
                     onChange={(e) => setEventForm((f) => ({ ...f, title: e.target.value }))}
@@ -678,11 +804,11 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Event description *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Event description *</label>
                   <textarea
                     required
                     rows={4}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 resize-y"
+                    className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="What is it, who it's for, why join?"
                     value={eventForm.description}
                     onChange={(e) => setEventForm((f) => ({ ...f, description: e.target.value }))}
@@ -690,30 +816,30 @@ const AdminDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Start date &amp; time *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Start date &amp; time *</label>
                   <input
                     required
                     type="datetime-local"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={eventForm.startDateTime}
                     onChange={(e) => setEventForm((f) => ({ ...f, startDateTime: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">End date &amp; time</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">End date &amp; time</label>
                   <input
                     type="datetime-local"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={eventForm.endDateTime}
                     onChange={(e) => setEventForm((f) => ({ ...f, endDateTime: e.target.value }))}
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Location / venue *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Location / venue *</label>
                   <input
                     required
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="Building, room, or online meeting link"
                     value={eventForm.location}
                     onChange={(e) => setEventForm((f) => ({ ...f, location: e.target.value }))}
@@ -721,17 +847,17 @@ const AdminDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Organizer / host *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Organizer / host *</label>
                   <input
                     required
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="Club, department, or person"
                     value={eventForm.organizer}
                     onChange={(e) => setEventForm((f) => ({ ...f, organizer: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Event type / category *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Event type / category *</label>
                   <select
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={eventForm.category}
@@ -746,7 +872,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Banner / poster image</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Banner / poster image</label>
                   <input
                     type="file"
                     accept="image/*"
@@ -756,7 +882,7 @@ const AdminDashboard = () => {
                   {bannerFile && <p className="text-xs text-slate-500 mt-1">{bannerFile.name}</p>}
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Video clip (optional)</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Video clip (optional)</label>
                   <input
                     type="file"
                     accept="video/*"
@@ -767,10 +893,10 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Video URL (optional)</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Video URL (optional)</label>
                   <input
                     type="url"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="YouTube, Vimeo, or direct link if not uploading a file above"
                     value={eventForm.videoUrl}
                     onChange={(e) => setEventForm((f) => ({ ...f, videoUrl: e.target.value }))}
@@ -778,10 +904,10 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Contact info (optional)</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Contact info (optional)</label>
                   <textarea
                     rows={2}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     placeholder="Email, phone, social media for inquiries"
                     value={eventForm.contactInfo}
                     onChange={(e) => setEventForm((f) => ({ ...f, contactInfo: e.target.value }))}
@@ -802,13 +928,13 @@ const AdminDashboard = () => {
 
             <section className="space-y-8">
               <div>
-                <h2 className="text-lg font-bold text-slate-800 mb-3">Upcoming events</h2>
-                <p className="text-sm text-slate-500 mb-3">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3">Upcoming events</h2>
+                <p className="text-sm text-slate-500 mb-3 dark:text-slate-400">
                   Shown first on the public hub. Use Mark finished (or Edit → checkbox) to move to Finished.
                 </p>
                 <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-100 text-left">
+                  <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+                    <thead className="bg-slate-100 text-left dark:bg-slate-800/90 dark:text-slate-200">
                       <tr>
                         <th className="p-3 font-semibold">Title</th>
                         <th className="p-3 font-semibold">Category</th>
@@ -820,10 +946,15 @@ const AdminDashboard = () => {
                     </thead>
                     <tbody>
                       {communityEventsUpcoming.map((ev) => (
-                        <tr key={ev._id} className="border-t border-slate-100">
+                        <tr
+                          key={ev._id}
+                          className="border-t border-slate-100 dark:border-slate-700/60 dark:hover:bg-slate-800/50"
+                        >
                           <td className="p-3 max-w-xs font-medium">{ev.title}</td>
                           <td className="p-3">{ev.category}</td>
-                          <td className="p-3 whitespace-nowrap">{formatEventWhen(ev.startDateTime)}</td>
+                          <td className="p-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
+                            {formatEventWhen(ev.startDateTime)}
+                          </td>
                           <td className="p-3 max-w-[140px] truncate" title={ev.location}>
                             {ev.location}
                           </td>
@@ -833,7 +964,7 @@ const AdminDashboard = () => {
                               type="button"
                               onClick={() => handleMarkCommunityEventFinished(ev._id)}
                               disabled={Boolean(actionId)}
-                              className="text-emerald-700 font-semibold hover:underline disabled:opacity-50"
+                              className="text-emerald-700 font-semibold hover:underline disabled:opacity-50 dark:text-emerald-400"
                             >
                               {actionId === `ce-fin-${ev._id}` ? '…' : 'Mark finished'}
                             </button>
@@ -841,7 +972,7 @@ const AdminDashboard = () => {
                               type="button"
                               onClick={() => openEditCommunityEvent(ev)}
                               disabled={Boolean(actionId)}
-                              className="text-blue-600 font-semibold hover:underline disabled:opacity-50"
+                              className="text-blue-600 font-semibold hover:underline disabled:opacity-50 dark:text-blue-400"
                             >
                               Edit
                             </button>
@@ -849,7 +980,7 @@ const AdminDashboard = () => {
                               type="button"
                               onClick={() => handleDeleteCommunityEvent(ev._id)}
                               disabled={Boolean(actionId)}
-                              className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                              className="text-red-600 font-semibold hover:underline disabled:opacity-50 dark:text-red-400"
                             >
                               {actionId === `ce-${ev._id}` ? '…' : 'Delete'}
                             </button>
@@ -859,19 +990,19 @@ const AdminDashboard = () => {
                     </tbody>
                   </table>
                   {communityEventsUpcoming.length === 0 && (
-                    <p className="p-6 text-slate-500 text-center">No upcoming events.</p>
+                    <p className="p-6 text-slate-500 text-center dark:text-slate-400">No upcoming events.</p>
                   )}
                 </div>
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-slate-800 mb-3">Finished events</h2>
-                <p className="text-sm text-slate-500 mb-3">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3">Finished events</h2>
+                <p className="text-sm text-slate-500 mb-3 dark:text-slate-400">
                   Past start dates (before today, UTC) or manually marked finished.
                 </p>
                 <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-100 text-left">
+                  <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+                    <thead className="bg-slate-100 text-left dark:bg-slate-800/90 dark:text-slate-200">
                       <tr>
                         <th className="p-3 font-semibold">Title</th>
                         <th className="p-3 font-semibold">Category</th>
@@ -882,11 +1013,16 @@ const AdminDashboard = () => {
                     </thead>
                     <tbody>
                       {communityEventsFinished.map((ev) => (
-                        <tr key={ev._id} className="border-t border-slate-100 opacity-90">
+                        <tr
+                          key={ev._id}
+                          className="border-t border-slate-100 opacity-90 dark:border-slate-700/60 dark:hover:bg-slate-800/50"
+                        >
                           <td className="p-3 max-w-xs font-medium">{ev.title}</td>
                           <td className="p-3">{ev.category}</td>
-                          <td className="p-3 whitespace-nowrap">{formatEventWhen(ev.startDateTime)}</td>
-                          <td className="p-3 text-xs text-slate-600">
+                          <td className="p-3 whitespace-nowrap text-slate-700 dark:text-slate-300">
+                            {formatEventWhen(ev.startDateTime)}
+                          </td>
+                          <td className="p-3 text-xs text-slate-600 dark:text-slate-400">
                             {ev.finishedByManual ? 'Manual' : 'Past date'}
                           </td>
                           <td className="p-3 text-right space-x-2">
@@ -894,7 +1030,7 @@ const AdminDashboard = () => {
                               type="button"
                               onClick={() => openEditCommunityEvent(ev)}
                               disabled={Boolean(actionId)}
-                              className="text-blue-600 font-semibold hover:underline disabled:opacity-50"
+                              className="text-blue-600 font-semibold hover:underline disabled:opacity-50 dark:text-blue-400"
                             >
                               Edit
                             </button>
@@ -902,7 +1038,7 @@ const AdminDashboard = () => {
                               type="button"
                               onClick={() => handleDeleteCommunityEvent(ev._id)}
                               disabled={Boolean(actionId)}
-                              className="text-red-600 font-semibold hover:underline disabled:opacity-50"
+                              className="text-red-600 font-semibold hover:underline disabled:opacity-50 dark:text-red-400"
                             >
                               {actionId === `ce-${ev._id}` ? '…' : 'Delete'}
                             </button>
@@ -912,7 +1048,7 @@ const AdminDashboard = () => {
                     </tbody>
                   </table>
                   {communityEventsFinished.length === 0 && (
-                    <p className="p-6 text-slate-500 text-center">No finished events yet.</p>
+                    <p className="p-6 text-slate-500 text-center dark:text-slate-400">No finished events yet.</p>
                   )}
                 </div>
               </div>
@@ -965,63 +1101,63 @@ const AdminDashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Event title *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Event title *</label>
                 <input
                   required
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.title}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, title: e.target.value }))}
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Event description *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Event description *</label>
                 <textarea
                   required
                   rows={4}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 resize-y"
+                  className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.description}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, description: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Start date &amp; time *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Start date &amp; time *</label>
                 <input
                   required
                   type="datetime-local"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.startDateTime}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, startDateTime: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">End date &amp; time</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">End date &amp; time</label>
                 <input
                   type="datetime-local"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.endDateTime}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, endDateTime: e.target.value }))}
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Location / venue *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Location / venue *</label>
                 <input
                   required
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.location}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, location: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Organizer / host *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Organizer / host *</label>
                 <input
                   required
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.organizer}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, organizer: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Event type / category *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Event type / category *</label>
                 <select
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.category}
@@ -1038,7 +1174,7 @@ const AdminDashboard = () => {
                 </select>
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Replace banner</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Replace banner</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -1050,7 +1186,7 @@ const AdminDashboard = () => {
                 )}
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Replace video file</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Replace video file</label>
                 <input
                   type="file"
                   accept="video/*"
@@ -1062,20 +1198,20 @@ const AdminDashboard = () => {
                 )}
               </div>
               <div className="md:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Video URL</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Video URL</label>
                 <input
                   type="url"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   placeholder="YouTube or direct link (replaces uploaded video if changed)"
                   value={editEventForm.videoUrl}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, videoUrl: e.target.value }))}
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Contact info</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">Contact info</label>
                 <textarea
                   rows={2}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={editEventForm.contactInfo}
                   onChange={(e) => setEditEventForm((f) => ({ ...f, contactInfo: e.target.value }))}
                 />
@@ -1117,33 +1253,171 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {pollDetailOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="my-8 w-full max-w-6xl rounded-2xl bg-white p-6 text-sm shadow-xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
+            <div className="flex flex-wrap justify-between items-start gap-3 mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Poll breakdown</h3>
+                {pollDetail?.event && (
+                  <p className="text-slate-600 dark:text-slate-400 mt-1 font-medium">{pollDetail.event.title}</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {!pollDetailLoading && pollDetail?.stats && (
+                  <button
+                    type="button"
+                    onClick={() => downloadPollReportPdf(pollDetail)}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+                  >
+                    Download PDF report
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPollDetailOpen(false);
+                    setPollDetail(null);
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {pollDetailLoading && <p className="text-slate-500 py-8">Loading…</p>}
+
+            {!pollDetailLoading && pollDetail && pollDetail.stats && (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 border border-slate-100 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 uppercase font-semibold">Responses</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{pollDetail.stats.total}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 border border-slate-100 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 uppercase font-semibold">Avg rating</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                      {pollDetail.stats.ratingAverage != null ? `${pollDetail.stats.ratingAverage} / 5` : '—'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 border border-slate-100 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 uppercase font-semibold">Attended (yes)</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{pollDetail.stats.attendedYes}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3 border border-slate-100 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 uppercase font-semibold">Attended (no)</p>
+                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{pollDetail.stats.attendedNo}</p>
+                  </div>
+                </div>
+                {(pollDetail.stats.attendedSkipped ?? 0) > 0 && (
+                  <p className="text-xs text-slate-500 mt-1 mb-4">
+                    Attendance not answered: {pollDetail.stats.attendedSkipped}
+                  </p>
+                )}
+
+                <PollChartsGrid stats={pollDetail.stats} />
+
+                <div className="grid md:grid-cols-3 gap-4 mb-6 text-xs">
+                  <div>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300 mb-2">Star ratings</p>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-400">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <li key={n}>
+                          {n}★: {pollDetail.stats.ratingDistribution?.[n] ?? 0}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300 mb-2">How was the event?</p>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-400">
+                      {['Good', 'Average', 'Bad'].map((k) => (
+                        <li key={k}>
+                          {k}: {pollDetail.stats.experience?.[k] ?? 0}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300 mb-2">Best part</p>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-400">
+                      {['Activities', 'Speaker', 'Food', 'Organization'].map((k) => (
+                        <li key={k}>
+                          {k}: {pollDetail.stats.bestPart?.[k] ?? 0}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">Individual responses</h4>
+                <div className="overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-700">
+                  <table className="w-full text-xs text-slate-800 dark:text-slate-200">
+                    <thead className="bg-slate-100 text-left dark:bg-slate-800/90 dark:text-slate-200">
+                      <tr>
+                        <th className="p-2 font-semibold">When</th>
+                        <th className="p-2 font-semibold">Attended</th>
+                        <th className="p-2 font-semibold">Rating</th>
+                        <th className="p-2 font-semibold">Experience</th>
+                        <th className="p-2 font-semibold">Best part</th>
+                        <th className="p-2 font-semibold">Suggestion</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(pollDetail.responses || []).map((r) => (
+                        <tr
+                          key={r._id}
+                          className="border-t border-slate-100 dark:border-slate-700/60 dark:hover:bg-slate-800/30"
+                        >
+                          <td className="p-2 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                            {new Date(r.createdAt).toLocaleString()}
+                          </td>
+                          <td className="p-2">
+                            {typeof r.attended === 'boolean' ? (r.attended ? 'Yes' : 'No') : '—'}
+                          </td>
+                          <td className="p-2">{r.rating != null ? r.rating : '—'}</td>
+                          <td className="p-2">{r.experience ?? '—'}</td>
+                          <td className="p-2">{r.bestPart ?? '—'}</td>
+                          <td className="p-2 max-w-[200px] break-words">{r.suggestion || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {editUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <form
             onSubmit={saveEdit}
             className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900"
           >
-            <h3 className="text-lg font-bold text-slate-800">Edit user</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Edit user</h3>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Full name</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Full name</label>
               <input
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 value={editForm.realName}
                 onChange={(e) => setEditForm((f) => ({ ...f, realName: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Nickname</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Nickname</label>
               <input
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 value={editForm.nickname}
                 onChange={(e) => setEditForm((f) => ({ ...f, nickname: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Student ID</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Student ID</label>
               <input
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 value={editForm.studentId}
                 onChange={(e) => setEditForm((f) => ({ ...f, studentId: e.target.value }))}
               />
@@ -1152,7 +1426,7 @@ const AdminDashboard = () => {
               <button
                 type="button"
                 onClick={() => setEditUser(null)}
-                className="px-4 py-2 rounded-lg border border-slate-200"
+                className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-200"
               >
                 Cancel
               </button>

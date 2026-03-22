@@ -3,6 +3,7 @@ const { authenticate, requireAdmin } = require('../middleware/authMiddleware');
 const adminController = require('../controllers/adminController');
 const communityEventController = require('../controllers/communityEventController');
 const contactController = require('../controllers/contactController');
+const eventPollController = require('../controllers/eventPollController');
 
 const router = express.Router();
 
@@ -28,6 +29,9 @@ router.patch(
   communityEventController.markFinished
 );
 router.delete('/community-events/:id', authenticate, requireAdmin, communityEventController.remove);
+
+router.get('/event-polls/summary', authenticate, requireAdmin, eventPollController.listSummary);
+router.get('/event-polls/:eventId', authenticate, requireAdmin, eventPollController.detail);
 
 // Contact messages management
 router.get('/contacts', authenticate, requireAdmin, contactController.adminList);

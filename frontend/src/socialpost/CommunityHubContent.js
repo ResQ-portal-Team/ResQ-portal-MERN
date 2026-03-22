@@ -8,18 +8,20 @@ const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600&display=swap');
 
   :root {
-    --bg:          #f8fafc;
-    --bg-1:        #ffffff;
-    --bg-2:        #f1f5f9;
-    --border:      rgba(15,23,42,0.08);
-    --border-hi:   rgba(15,23,42,0.14);
-    --gold:        #b45309;
-    --gold-2:      #d97706;
-    --gold-dim:    rgba(180,83,9,0.1);
-    --gold-glow:   rgba(180,83,9,0.04);
-    --text:        #0f172a;
+    /* Muted “light” — softer than stark white/slate-50 */
+    --bg:          #d4dce6;
+    --bg-1:        #e4eaf1;
+    --bg-2:        #c9d4e0;
+    --border:      rgba(15,23,42,0.11);
+    --border-hi:   rgba(15,23,42,0.18);
+    --gold:        #92400e;
+    --gold-2:      #b45309;
+    --gold-dim:    rgba(146,64,14,0.14);
+    --gold-glow:   rgba(146,64,14,0.07);
+    --text:        #1e293b;
     --text-2:      #475569;
     --text-3:      #64748b;
+    --skel-mid:    #94a3b8;
     --radius:      14px;
     --dis:         'Cormorant Garamond', Georgia, serif;
     --body:        'Outfit', sans-serif;
@@ -38,53 +40,75 @@ const STYLES = `
     --text:        #e4e0d8;
     --text-2:      #8a8d96;
     --text-3:      #555c6a;
+    --skel-mid:    #1c2332;
   }
 
   *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .ch { min-height: 100vh; background: var(--bg); font-family: var(--body); color: var(--text); }
 
-  /* ── Grid noise overlay ──────────────────────────────── */
-  .ch::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(15,23,42,0.04) 79px, rgba(15,23,42,0.04) 80px),
-      repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(15,23,42,0.04) 79px, rgba(15,23,42,0.04) 80px);
-    pointer-events: none;
-    z-index: 0;
-  }
-  html.dark .ch::before {
-    background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px),
-      repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px);
-  }
-
-  .ch > * { position: relative; z-index: 1; }
-
   /* ── Hero ────────────────────────────────────────────── */
   .ch-hero {
     position: relative;
     overflow: hidden;
-    padding: 100px 48px 80px;
+    padding: 48px 40px 32px;
     border-bottom: 1px solid var(--border);
-  }
-  .ch-hero-orb {
-    position: absolute;
-    top: -160px; right: -120px;
-    width: 600px; height: 600px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(201,168,76,0.09) 0%, transparent 70%);
-    pointer-events: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+    gap: 20px 28px;
+    align-items: start;
   }
   .ch-hero-orb-2 {
     position: absolute;
-    bottom: -200px; left: -80px;
-    width: 400px; height: 400px;
+    bottom: -200px;
+    left: -80px;
+    width: 400px;
+    height: 400px;
     border-radius: 50%;
     background: radial-gradient(circle, rgba(201,168,76,0.04) 0%, transparent 70%);
     pointer-events: none;
+    z-index: 0;
+  }
+  html:not(.dark) .ch-hero-orb-2 {
+    opacity: 0.42;
+  }
+  .ch-hero-orb {
+    position: relative;
+    width: 100%;
+    max-width: 280px;
+    margin-left: auto;
+    z-index: 1;
+  }
+  .ch-hero-orb-glow {
+    position: absolute;
+    top: -120px;
+    right: -80px;
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,168,76,0.09) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  html:not(.dark) .ch-hero-orb-glow {
+    opacity: 0.42;
+  }
+  .ch-hero-orb .ch-cal {
+    position: relative;
+    top: auto;
+    width: 100%;
+    max-width: 256px;
+    margin-left: auto;
+    margin-right: 0;
+  }
+  .ch-hero-content {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   .ch-eyebrow {
     display: inline-flex;
@@ -95,42 +119,47 @@ const STYLES = `
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--gold);
-    margin-bottom: 28px;
+    margin: 0;
   }
   .ch-eyebrow-line {
-    width: 28px;
-    height: 1px;
+    width: 100px;
+    height: 1.5px;
     background: var(--gold);
     opacity: 0.6;
   }
   .ch-hero-title {
     font-family: var(--dis);
-    font-size: clamp(52px, 7vw, 96px);
+    font-size: clamp(36px, 5.5vw, 72px);
     font-weight: 700;
-    line-height: 0.95;
+    line-height: 1;
     letter-spacing: -0.02em;
     color: var(--text);
     max-width: 820px;
+    margin: 0;
   }
   .ch-hero-title em {
     font-style: italic;
     font-weight: 600;
     color: var(--gold);
     display: block;
+    margin-top: 0.12em;
+    line-height: 1.05;
   }
   .ch-hero-rule {
     width: 64px;
     height: 2px;
     background: linear-gradient(90deg, var(--gold), transparent);
-    margin: 32px 0;
+    margin: 0;
+    flex-shrink: 0;
   }
   .ch-hero-sub {
     font-size: 14px;
     font-weight: 300;
-    line-height: 1.8;
+    line-height: 1.55;
     color: var(--text-2);
     max-width: 440px;
     letter-spacing: 0.02em;
+    margin: 0;
   }
 
   /* ── Main ────────────────────────────────────────────── */
@@ -304,15 +333,15 @@ const STYLES = `
     flex-shrink: 0;
   }
 
-  /* ── Event grid ──────────────────────────────────────── */
+  /* ── Event grid (spaced cards; each post is its own rounded block) ─ */
   .ch-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    gap: 16px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
   }
 
   /* ── Event card ──────────────────────────────────────── */
@@ -324,7 +353,15 @@ const STYLES = `
     color: inherit;
     position: relative;
     overflow: hidden;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
+    padding: 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-sizing: border-box;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  }
+  html.dark .ch-card {
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
   }
   .ch-card::after {
     content: '';
@@ -335,18 +372,26 @@ const STYLES = `
     transition: opacity 0.3s;
     pointer-events: none;
   }
-  .ch-card:hover { background: var(--bg-2); }
+  .ch-card:hover {
+    background: var(--bg-2);
+    border-color: var(--border-hi);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  }
+  html.dark .ch-card:hover {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
   .ch-card:hover::after { opacity: 1; }
   .ch-card--finished { opacity: 0.55; }
   .ch-card--finished:hover { opacity: 0.8; }
 
-  /* Poster */
+  /* Poster — inner radius merges with body into one tile */
   .ch-poster {
     position: relative;
     width: 100%;
     aspect-ratio: 16/7;
     overflow: hidden;
     background: var(--bg-2);
+    border-radius: 10px 10px 0 0;
   }
   .ch-poster img {
     width: 100%; height: 100%;
@@ -408,11 +453,12 @@ const STYLES = `
 
   /* Card body */
   .ch-body {
-    padding: 22px 24px 24px;
+    padding: 18px 16px 18px;
     display: flex;
     flex-direction: column;
     flex: 1;
     gap: 0;
+    border-radius: 0 0 10px 10px;
   }
   .ch-card-num {
     font-size: 10px;
@@ -524,28 +570,43 @@ const STYLES = `
   .ch-skel {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    gap: 16px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
   }
   .ch-skel-card {
     background: var(--bg-1);
     overflow: hidden;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 12px;
+    box-sizing: border-box;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  }
+  html.dark .ch-skel-card {
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
   }
   .ch-skel-poster {
     width: 100%;
     aspect-ratio: 16/7;
-    background: linear-gradient(90deg, var(--bg-2) 25%, #1c2332 50%, var(--bg-2) 75%);
+    border-radius: 10px 10px 0 0;
+    background: linear-gradient(90deg, var(--bg-2) 25%, var(--skel-mid) 50%, var(--bg-2) 75%);
     background-size: 300% 100%;
     animation: skel 2s ease infinite;
   }
-  .ch-skel-lines { padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .ch-skel-lines {
+    padding: 18px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-radius: 0 0 10px 10px;
+  }
   .ch-skel-line {
     height: 11px;
     border-radius: 4px;
-    background: linear-gradient(90deg, var(--bg-2) 25%, #1c2332 50%, var(--bg-2) 75%);
+    background: linear-gradient(90deg, var(--bg-2) 25%, var(--skel-mid) 50%, var(--bg-2) 75%);
     background-size: 300% 100%;
     animation: skel 2s ease infinite;
   }
@@ -556,13 +617,21 @@ const STYLES = `
 
   /* ── Responsive ──────────────────────────────────────── */
   @media (max-width: 900px) {
-    .ch-hero { padding: 72px 24px 60px; }
+    .ch-hero {
+      padding: 36px 24px 28px;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .ch-hero-orb {
+      max-width: 300px;
+      margin-left: 0;
+    }
     .ch-main { padding: 52px 24px 80px; }
     .ch-up-head { flex-direction: column; }
     .ch-cal { width: 100%; max-width: 300px; position: relative; top: auto; }
   }
   @media (max-width: 640px) {
-    .ch-hero { padding: 52px 16px 44px; }
+    .ch-hero { padding: 28px 16px 24px; }
     .ch-main { padding: 40px 16px 64px; }
     .ch-grid, .ch-skel { grid-template-columns: 1fr; }
   }
@@ -731,30 +800,21 @@ const EventCard = ({ ev, index }) => (
 );
 
 /* ─── Sections ──────────────────────────────────────────────────────────── */
-const UpcomingSection = ({ events }) => {
-  const eventDateKeys = useMemo(() => {
-    const s = new Set();
-    events.forEach(ev => { const k = localDateKey(ev.startDateTime); if (k) s.add(k); });
-    return s;
-  }, [events]);
-
-  return (
-    <section className="ch-section" aria-labelledby="ch-upcoming">
-      <div className="ch-up-head">
-        <div className="ch-up-left">
-          <div className="ch-up-title-row">
-            <h3 id="ch-upcoming" className="ch-section-title">Upcoming events</h3>
-            <span className="ch-section-count">{events.length} scheduled</span>
-          </div>
+const UpcomingSection = ({ events }) => (
+  <section className="ch-section" aria-labelledby="ch-upcoming">
+    <div className="ch-up-head">
+      <div className="ch-up-left">
+        <div className="ch-up-title-row">
+          <h3 id="ch-upcoming" className="ch-section-title">Upcoming events</h3>
+          <span className="ch-section-count">{events.length} scheduled</span>
         </div>
-        <RealtimeCalendar eventDateKeys={eventDateKeys} />
       </div>
-      <div className="ch-grid">
-        {events.map((ev, i) => <EventCard key={ev._id} ev={ev} index={i} />)}
-      </div>
-    </section>
-  );
-};
+    </div>
+    <div className="ch-grid">
+      {events.map((ev, i) => <EventCard key={ev._id} ev={ev} index={i} />)}
+    </div>
+  </section>
+);
 
 const FinishedSection = ({ events }) => (
   <section className="ch-section" aria-labelledby="ch-finished">
@@ -802,6 +862,15 @@ const CommunityHubContent = () => {
 
   const empty = !loading && !error && upcoming.length === 0 && finished.length === 0;
 
+  const heroEventDateKeys = useMemo(() => {
+    const s = new Set();
+    upcoming.forEach((ev) => {
+      const k = localDateKey(ev.startDateTime);
+      if (k) s.add(k);
+    });
+    return s;
+  }, [upcoming]);
+
   return (
     <div className="ch">
       <style>{STYLES}</style>
@@ -809,21 +878,26 @@ const CommunityHubContent = () => {
 
       {/* Hero */}
       <div className="ch-hero">
-        <div className="ch-hero-orb" aria-hidden />
         <div className="ch-hero-orb-2" aria-hidden />
-        <p className="ch-eyebrow">
-          <span className="ch-eyebrow-line" />
-          Community Hub
-          <span className="ch-eyebrow-line" />
-        </p>
-        <h2 className="ch-hero-title">
-          What's on
-          <em>near you</em>
-        </h2>
-        <div className="ch-hero-rule" />
-        <p className="ch-hero-sub">
-          Upcoming events sorted by soonest start date. Finished events are archived automatically or by an admin.
-        </p>
+        <div className="ch-hero-content">
+          <p className="ch-eyebrow">
+            <span className="ch-eyebrow-line" />
+            Community Hub
+            <span className="ch-eyebrow-line" />
+          </p>
+          <h2 className="ch-hero-title">
+            What&apos;s on
+            <em>near you</em>
+          </h2>
+          <div className="ch-hero-rule" />
+          <p className="ch-hero-sub">
+            Upcoming events sorted by soonest start date. Finished events are archived automatically or by an admin.
+          </p>
+        </div>
+        <div className="ch-hero-orb">
+          <div className="ch-hero-orb-glow" aria-hidden />
+          <RealtimeCalendar eventDateKeys={heroEventDateKeys} />
+        </div>
       </div>
 
       {/* Content */}

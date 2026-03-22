@@ -1,10 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { API_BASE } from './config';
+
+const formatEventDate = (d) => {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+};
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('resqUser');
@@ -16,6 +34,27 @@ const LandingPage = () => {
       localStorage.removeItem('resqUser');
       localStorage.removeItem('resqToken');
     }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setEventsLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/community-events`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Failed to load events');
+        const upcoming = Array.isArray(data.upcoming) ? data.upcoming : [];
+        if (!cancelled) setUpcomingEvents(upcoming.slice(0, 2));
+      } catch {
+        if (!cancelled) setUpcomingEvents([]);
+      } finally {
+        if (!cancelled) setEventsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Handle smooth scroll for navigation links
@@ -170,6 +209,98 @@ const LandingPage = () => {
           <div><div className="mb-2 text-4xl font-black">10,000+</div><div className="text-sm font-medium text-blue-100">Active Community</div></div>
           <div><div className="mb-2 text-4xl font-black">95%</div><div className="text-sm font-medium text-blue-100">Success Rate</div></div>
           <div><div className="mb-2 text-4xl font-black">&lt; 24h</div><div className="text-sm font-medium text-blue-100">Avg. Match Time</div></div>
+        </div>
+      </section>
+
+      {/* Upcoming community events (latest two by start date) */}
+      <section
+        className="border-t border-gray-100 bg-gray-50/50 py-16 dark:border-slate-800 dark:bg-slate-900/50"
+        aria-labelledby="landing-upcoming-events"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="mb-1 text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                Community Hub
+              </p>
+              <h2
+                id="landing-upcoming-events"
+                className="text-3xl font-black text-gray-900 dark:text-white md:text-4xl"
+              >
+                Upcoming events
+              </h2>
+              <p className="mt-2 max-w-xl text-sm text-gray-500 dark:text-slate-400">
+                The next happenings on campus — open the hub for the full calendar and archives.
+              </p>
+            </div>
+            <Link
+              to="/community-hub/content"
+              className="shrink-0 text-sm font-bold text-blue-600 underline-offset-4 transition hover:underline dark:text-blue-400"
+            >
+              View all events →
+            </Link>
+          </div>
+
+          {eventsLoading && (
+            <div className="grid gap-6 md:grid-cols-2">
+              {[0, 1].map((k) => (
+                <div
+                  key={k}
+                  className="h-40 animate-pulse rounded-3xl bg-gray-200/80 dark:bg-slate-800"
+                />
+              ))}
+            </div>
+          )}
+
+          {!eventsLoading && upcomingEvents.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-gray-200 bg-white/80 py-10 text-center text-sm text-gray-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+              No upcoming events right now. Check back soon or browse past events in the Community Hub.
+            </p>
+          )}
+
+          {!eventsLoading && upcomingEvents.length > 0 && (
+            <div className="grid gap-6 md:grid-cols-2">
+              {upcomingEvents.map((ev) => (
+                <Link
+                  key={ev._id}
+                  to={`/community-hub/content/${ev._id}`}
+                  className="group flex overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-xl dark:border-slate-700 dark:bg-slate-800/80 dark:hover:border-blue-500/40"
+                >
+                  <div className="relative h-36 w-32 shrink-0 bg-gray-100 dark:bg-slate-700 sm:h-auto sm:w-40">
+                    {ev.imageUrl ? (
+                      <img
+                        src={ev.imageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-3xl text-gray-300 dark:text-slate-500">
+                        ◈
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col justify-center p-5">
+                    {ev.category && (
+                      <span className="mb-1 inline-block w-fit rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                        {ev.category}
+                      </span>
+                    )}
+                    <h3 className="line-clamp-2 text-lg font-bold text-gray-900 group-hover:text-blue-600 dark:text-slate-100 dark:group-hover:text-blue-400">
+                      {ev.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                      {formatEventDate(ev.startDateTime)}
+                      {ev.location ? ` · ${ev.location}` : ''}
+                    </p>
+                    <span className="mt-3 inline-flex items-center text-sm font-bold text-blue-600 dark:text-blue-400">
+                      View details
+                      <span className="ml-1 transition-transform group-hover:translate-x-0.5">→</span>
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
