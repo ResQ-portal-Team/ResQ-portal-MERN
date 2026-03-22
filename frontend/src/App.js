@@ -6,6 +6,7 @@ import Dashboard from './Dashboard';
 import LandingPage from './LandingPage'; // Make sure you have created LandingPage.js
 import CommunityHub from './socialpost/CommunityHub';
 import ReportItem from './ReportItem';
+import ItemDetailPage from './ItemDetailPage';
 
 function App() {
   return (
@@ -33,6 +34,9 @@ function App() {
 
         {/* Report Item Page */}
         <Route path="/report-item" element={<ReportItem />} />
+
+        {/* Item Detail Page */}
+        <Route path="/items/:itemId" element={<ItemDetailPage />} />
       </Routes>
     </Router>
   );
