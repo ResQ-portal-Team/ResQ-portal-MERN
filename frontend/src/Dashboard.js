@@ -370,6 +370,13 @@ const Dashboard = () => {
           >
             Contact Us
           </button>
+          <button
+            type="button"
+            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            onClick={() => navigate('/about')}
+          >
+            About Us
+          </button>
           {currentUser ? (
             <button
               onClick={() => setShowProfile(true)}
