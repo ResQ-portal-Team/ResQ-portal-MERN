@@ -369,9 +369,11 @@ const Dashboard = () => {
   const displayedItems = activeTab === 'active' ? activeItems : returnedItems;
   const foundItemsCount = items.filter((item) => item.type === 'found').length;
 
+  const pageX = 'w-full px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-20';
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
-      <nav className="flex items-center justify-between border-b border-gray-100 bg-white p-4 px-8 shadow-sm dark:border-slate-800 dark:bg-slate-900 sticky top-0 z-50">
+    <div className="min-h-screen w-full bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
+      <nav className={`flex items-center justify-between border-b border-gray-100 bg-white py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sticky top-0 z-50 ${pageX}`}>
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
           <span className="text-xl font-bold text-gray-800 tracking-tight text-center dark:text-slate-100">Portal</span>
@@ -415,17 +417,17 @@ const Dashboard = () => {
       </nav>
 
       <div
-        className="relative bg-blue-900 text-white py-20 px-8 text-center bg-cover bg-center"
+        className="relative bg-blue-900 text-white py-16 sm:py-20 text-center bg-cover bg-center"
         style={{
           backgroundImage:
             'linear-gradient(rgba(0,0,30,0.7), rgba(0,0,30,0.7)), url("https://images.unsplash.com/photo-1523050853023-8c2d29149f0b?auto=format&fit=crop&q=80")',
         }}
       >
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-6xl font-black mb-6 leading-tight">
+        <div className={`relative z-10 mx-auto ${pageX}`}>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight">
             Lost Something? <span className="text-yellow-400">We&apos;ll Help.</span>
           </h1>
-          <p className="text-xl opacity-90 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
+          <p className="text-lg sm:text-xl opacity-90 mb-10 mx-auto max-w-4xl font-light leading-relaxed">
             Report lost or found items, upload a photo, and keep the active and returned lists organized from one place.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -445,7 +447,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto -mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 px-4 relative z-20">
+      <div className={`mx-auto -mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 relative z-20 ${pageX}`}>
         {[
           { label: 'Items Reported', value: items.length, color: 'text-blue-600' },
           { label: 'Active List', value: activeItems.length, color: 'text-amber-600' },
@@ -462,7 +464,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div ref={itemsSectionRef} className="max-w-6xl mx-auto py-20 px-4">
+      <div ref={itemsSectionRef} className={`mx-auto py-16 sm:py-20 ${pageX}`}>
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-10">
           <div>
             <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-white">Lost &amp; Found Board</h2>
@@ -526,7 +528,7 @@ const Dashboard = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
             {displayedItems.map((item) => {
               const isAuthor = currentUser?.id === item.postedBy?._id;
               const itemStatus = normalizeStatus(item.status);

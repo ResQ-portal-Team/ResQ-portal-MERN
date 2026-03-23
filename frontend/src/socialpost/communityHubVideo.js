@@ -31,3 +31,10 @@ export function youtubeEmbedSrcWithAutoplay(embedBase) {
   const sep = embedBase.includes('?') ? '&' : '?';
   return `${embedBase}${sep}autoplay=1&mute=0&rel=0`;
 }
+
+/** Embed without autoplay (e.g. until feedback modal is dismissed). */
+export function youtubeEmbedSrcNoAutoplay(embedBase) {
+  if (!embedBase) return '';
+  const sep = embedBase.includes('?') ? '&' : '?';
+  return `${embedBase}${sep}autoplay=0&mute=0&rel=0`;
+}

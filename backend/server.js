@@ -12,7 +12,7 @@ const app = express();
 const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '50mb';
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: true,
     credentials: true,
   })
 );
@@ -26,6 +26,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const CommunityEvent = require('./models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
+const eventPollController = require('./controllers/eventPollController');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
@@ -45,6 +46,9 @@ app.get('/api/community-events', async (req, res) => {
     res.status(500).json({ message: 'Failed to load community events.' });
   }
 });
+
+/** Public: submit event feedback poll — register before GET /:id so /poll is not captured as :id */
+app.post('/api/community-events/:id/poll', eventPollController.submit);
 
 /** Single event for hub detail page */
 app.get('/api/community-events/:id', async (req, res) => {
