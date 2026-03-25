@@ -9,8 +9,10 @@ const ItemSchema = new mongoose.Schema({
     category: { type: String, required: true },
     // Location for matching: "Canteen", "Lab 01", "Main Hall"
     location: { type: String, required: true },
-    image: { type: String }, // URL or filename for the uploaded image
+    image: { type: String }, // URL for the uploaded image from Cloudinary
     imagePublicId: { type: String, default: null },
+    /** AI generated keywords based on the uploaded image for advanced matching */
+    imageTags: { type: [String], default: [] }, 
     /** Date the item was lost or found (user-provided). */
     date: { type: Date },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
