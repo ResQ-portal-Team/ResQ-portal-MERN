@@ -8,8 +8,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env'), override: false }
 const app = express();
 
 // --- Middleware ---
-/** Base64 video/image payloads need a higher limit; override in .env if needed. */
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '50mb';
+const requestBodyLimit = '50mb'; // Limit එක කෙලින්ම 50mb කලා
 app.use(
   cors({
     origin: true,
@@ -30,12 +29,9 @@ const eventPollController = require('./controllers/eventPollController');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
-/** Admin routes: GET /api/admin/health (no auth), then /users, /items, … (JWT + role admin) */
 app.use('/api/admin', adminRoutes);
-/** Public contact submissions */
 app.use('/api/contacts', contactRoutes);
 
-/** Public list for Community Hub — upcoming vs finished (date + manual) */
 app.get('/api/community-events', async (req, res) => {
   try {
     const raw = await CommunityEvent.find().sort({ startDateTime: 1 }).lean();
@@ -47,10 +43,8 @@ app.get('/api/community-events', async (req, res) => {
   }
 });
 
-/** Public: submit event feedback poll — register before GET /:id so /poll is not captured as :id */
 app.post('/api/community-events/:id/poll', eventPollController.submit);
 
-/** Single event for hub detail page */
 app.get('/api/community-events/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -72,23 +66,16 @@ const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/resq_portal";
 
 mongoose.connect(uri)
     .then(() => {
-        if (uri.includes('127.0.0.1') || uri.includes('localhost')) {
-            console.log("✅ MongoDB Local Connected!");
-        } else {
-            console.log("✅ MongoDB Atlas Connected!");
-        }
+        console.log(uri.includes('127.0.0.1') ? "✅ MongoDB Local Connected!" : "✅ MongoDB Atlas Connected!");
     })
     .catch(err => {
         console.error("❌ MongoDB Connection Error: ", err.message);
-        console.log("💡 Tip: Make sure your MongoDB Server is running locally.");
     });
 
-// --- Basic Route ---
 app.get('/', (req, res) => {
     res.send("ResQ-Portal Backend is running smoothly...");
 });
 
-// --- Server Startup ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
