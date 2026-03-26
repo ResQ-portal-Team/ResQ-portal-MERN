@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ITEM_CATEGORY_GROUPS } from './itemCategories';
+import NotificationBell from './NotificationBell';
 
 const createInitialReportForm = () => ({
   title: '',
@@ -398,6 +399,18 @@ const Dashboard = () => {
           >
             About Us
           </button>
+          
+          {/* Chats Button */}
+          <button
+            onClick={() => navigate('/chats')}
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 flex items-center gap-1"
+          >
+            💬 Chats
+          </button>
+          
+          {/* Notification Bell */}
+          <NotificationBell />
+          
           {currentUser ? (
             <button
               onClick={() => setShowProfile(true)}
