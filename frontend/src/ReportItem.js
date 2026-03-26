@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from './config';
 import { ITEM_CATEGORY_GROUPS } from './itemCategories';
+import MatchSuccessModal from './MatchSuccessModal';
 
 const todayIsoDateLocal = () => {
   const t = new Date();
@@ -32,6 +33,10 @@ const ReportItem = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // 🆕 Match Modal State
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchData, setMatchData] = useState(null);
 
   const currentUser = (() => {
     try {
@@ -50,6 +55,37 @@ const ReportItem = () => {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0] || null;
     setImageFile(file);
+  };
+
+  // 🆕 Handle View Details
+  const handleViewDetails = (itemId) => {
+    setShowMatchModal(false);
+    navigate(`/items/${itemId}`);
+  };
+
+  // 🆕 Handle Start Chat
+  const handleStartChat = async (itemId, matchedUserId) => {
+    setShowMatchModal(false);
+    
+    try {
+      const token = localStorage.getItem('resqToken');
+      const response = await fetch(`${API_BASE}/api/chat/room`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ itemId, matchedUserId })
+      });
+      const data = await response.json();
+      if (data.success) {
+        navigate(`/chat/${data.chatRoom._id}`);
+      } else {
+        console.error('Failed to create chat room');
+      }
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -114,9 +150,25 @@ const ReportItem = () => {
       }
 
       setSuccess(data?.message || 'Report submitted successfully.');
+      
+      // 🆕 Check for matches and show modal
+      if (data.matchFound && data.matches && data.matches.length > 0) {
+        setMatchData({
+          yourItem: data.item,
+          matches: data.matches,
+          message: data.message
+        });
+        setShowMatchModal(true);
+      } else {
+        // No matches, just show success and redirect
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+      }
+      
       setFormData(initialFormState);
       setImageFile(null);
-      navigate('/dashboard');
+      
     } catch (submitError) {
       setError('Cannot reach the server. Check that the backend is running and REACT_APP_API_URL if set.');
     } finally {
@@ -125,129 +177,144 @@ const ReportItem = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100 sm:p-6">
-      <div className="max-w-2xl mx-auto">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="mb-4 text-blue-700 font-semibold hover:underline"
-        >
-          ← Back to Dashboard
-        </button>
+    <>
+      <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100 sm:p-6">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mb-4 text-blue-700 font-semibold hover:underline"
+          >
+            ← Back to Dashboard
+          </button>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:p-8">
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Report a Lost or Found Item</h1>
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:p-8">
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Report a Lost or Found Item</h1>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
+                  <select
+                    name="type"
+                    value={formData.type}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  >
+                    <option value="lost">Lost item</option>
+                    <option value="found">Found item</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  >
+                    <option value="">Select a category</option>
+                    {ITEM_CATEGORY_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.options.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
-                <select
-                  name="type"
-                  value={formData.type}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  {formData.type === 'found' ? 'Date found' : 'Date lost'}
+                </label>
+                <input
+                  type="date"
+                  name="incidentDate"
+                  value={formData.incidentDate}
+                  max={todayIsoDateLocal()}
                   onChange={handleChange}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <option value="lost">Lost item</option>
-                  <option value="found">Found item</option>
-                </select>
+                />
               </div>
+
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                <select
-                  name="category"
-                  value={formData.category}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Item name</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
                   onChange={handleChange}
+                  placeholder="e.g. Black backpack"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <option value="">Select a category</option>
-                  {ITEM_CATEGORY_GROUPS.map((group) => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.options.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                {formData.type === 'found' ? 'Date found' : 'Date lost'}
-              </label>
-              <input
-                type="date"
-                name="incidentDate"
-                value={formData.incidentDate}
-                max={todayIsoDateLocal()}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Main hall, library, Lab 01..."
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Item name</label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="e.g. Black backpack"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Identifying details: color, brand, marks, when and where last seen, etc."
+                  rows={6}
+                  className="min-h-[140px] w-full resize-y rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="Main hall, library, Lab 01..."
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Image (optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                />
+                {imageFile && <p className="text-xs text-gray-500 mt-1">Selected: {imageFile.name}</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Identifying details: color, brand, marks, when and where last seen, etc."
-                rows={6}
-                className="min-h-[140px] w-full resize-y rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
+              {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+              {success && <p className="text-sm font-medium text-green-600">{success}</p>}
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Image (optional)</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              />
-              {imageFile && <p className="text-xs text-gray-500 mt-1">Selected: {imageFile.name}</p>}
-            </div>
-
-            {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-            {success && <p className="text-sm font-medium text-green-600">{success}</p>}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition disabled:opacity-70"
-            >
-              {loading ? 'Submitting...' : 'Submit Report'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition disabled:opacity-70"
+              >
+                {loading ? 'Submitting...' : 'Submit Report'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* 🆕 Match Success Modal */}
+      {showMatchModal && matchData && (
+        <MatchSuccessModal
+          matchData={matchData}
+          onClose={() => {
+            setShowMatchModal(false);
+            navigate('/dashboard');
+          }}
+          onViewDetails={handleViewDetails}
+          onStartChat={handleStartChat}
+        />
+      )}
+    </>
   );
 };
 

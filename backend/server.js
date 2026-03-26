@@ -7,8 +7,11 @@ require('dotenv').config({ path: path.join(__dirname, '.env'), override: false }
 
 const app = express();
 
+// --- PORT Definition - Move this to the TOP ---
+const PORT = process.env.PORT || 5000;
+
 // --- Middleware ---
-const requestBodyLimit = '50mb'; // Limit එක කෙලින්ම 50mb කලා
+const requestBodyLimit = '50mb';
 app.use(
   cors({
     origin: true,
@@ -23,6 +26,8 @@ const authRoutes = require('./routes/authRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const CommunityEvent = require('./models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
 const eventPollController = require('./controllers/eventPollController');
@@ -31,6 +36,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/community-events', async (req, res) => {
   try {
@@ -76,7 +83,13 @@ app.get('/', (req, res) => {
     res.send("ResQ-Portal Backend is running smoothly...");
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+// --- Socket.IO Server Initialization ---
+const { initializeSocket } = require('./socketServer');
+
+// Create server and start listening
+const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// Initialize Socket.IO for real-time chat
+initializeSocket(server);

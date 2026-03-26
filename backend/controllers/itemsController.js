@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const Item = require('../models/Item');
 const { ALLOWED_ITEM_CATEGORIES } = require('../constants/itemCategories');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { createNotification } = require('./notificationController');
 
 // Gemini Config
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -156,7 +157,7 @@ const getAIImageTags = async (imageUrl) => {
             
     } catch (error) {
         console.error("❌ AI Tagging Error:", error.message);
-        return []; // AI fail unath system eka continue wenawa
+        return [];
     }
 };
 
@@ -173,7 +174,7 @@ const calculateTextMatchScore = (desc1, desc2) => {
     const words1 = extractKeywords(desc1);
     const words2 = extractKeywords(desc2);
     const commonWords = words1.filter(word => words2.includes(word));
-    return Math.min(commonWords.length * 8, 30); // Max 30 points
+    return Math.min(commonWords.length * 8, 30);
 };
 
 // Calculate location match score
@@ -191,37 +192,7 @@ const calculateDateScore = (date1, date2) => {
 const calculateAITagsScore = (tags1, tags2) => {
     if (!tags1 || !tags2 || tags1.length === 0 || tags2.length === 0) return 0;
     const commonTags = tags1.filter(tag => tags2.includes(tag));
-    return Math.min(commonTags.length * 15, 35); // Max 35 points
-};
-
-// Send notification (implement based on your notification system)
-const sendMatchNotification = async (userId, itemId, notificationType) => {
-    if (!userId) {
-        console.error("❌ Cannot send notification: userId is missing");
-        return false;
-    }
-    
-    try {
-        // Implement your notification logic here
-        console.log(`📧 Notification sent to user ${userId}: ${notificationType} for item ${itemId}`);
-        
-        // If you have a Notification model:
-        // await Notification.create({
-        //     userId: userId,
-        //     itemId: itemId,
-        //     type: notificationType,
-        //     message: notificationType === 'owner_found' 
-        //         ? "Owner found, check it to confirm!" 
-        //         : "Your item is found, check it to confirm!",
-        //     read: false,
-        //     createdAt: new Date()
-        // });
-        
-        return true;
-    } catch (error) {
-        console.error("❌ Notification error:", error.message);
-        return false;
-    }
+    return Math.min(commonTags.length * 15, 35);
 };
 
 exports.createItem = async (req, res) => {
@@ -236,7 +207,7 @@ exports.createItem = async (req, res) => {
         let imageUpload = null;
         let aiTags = [];
 
-        // Image upload and AI Tagging (AI error unath system eka continue wenawa)
+        // Image upload and AI Tagging
         if (req.body.imageData) {
             try {
                 imageUpload = await uploadImageToCloudinary(req.body.imageData);
@@ -246,7 +217,6 @@ exports.createItem = async (req, res) => {
                 }
             } catch (uploadError) {
                 console.error("Image upload/AI tagging failed:", uploadError.message);
-                // Continue without image/AI tags
             }
         }
 
@@ -280,19 +250,11 @@ exports.createItem = async (req, res) => {
         for (const match of candidates) {
             let matchScore = 0;
             
-            // 1. Date match (within 7 days) - 25 points
             matchScore += calculateDateScore(match.date, savedItem.date);
-            
-            // 2. Location match - 25 points
             matchScore += calculateLocationScore(match.location, savedItem.location);
-            
-            // 3. Description text match - Max 30 points
             matchScore += calculateTextMatchScore(savedItem.description, match.description);
-            
-            // 4. AI Tags match - Max 35 points
             matchScore += calculateAITagsScore(savedItem.imageTags, match.imageTags);
             
-            // If score is 45 or more, consider it a match
             if (matchScore >= 45) {
                 foundMatches.push({
                     item: match,
@@ -310,7 +272,7 @@ exports.createItem = async (req, res) => {
             }
         }
 
-        // Sort matches by score (highest first)
+        // Sort matches by score
         foundMatches.sort((a, b) => b.score - a.score);
 
         // Send notifications if matches found
@@ -318,36 +280,80 @@ exports.createItem = async (req, res) => {
             savedItem.matchedWith = foundMatches[0].item._id;
             await savedItem.save();
             
-            // Send notification to current poster (with safe ID extraction)
-            const currentUserId = savedItem.postedBy?._id || savedItem.postedBy;
-            if (currentUserId) {
-                await sendMatchNotification(
-                    currentUserId, 
-                    savedItem._id, 
-                    savedItem.type === 'lost' ? 'item_found' : 'owner_found'
-                );
-            }
+            const topMatch = foundMatches[0];
+            const matchScore = topMatch.score;
+            const matchPercentage = Math.round((matchScore / 115) * 100);
             
-            // Send notification to matched item poster (with safe ID extraction)
-            const matchedItem = foundMatches[0].item;
+            // 🆕 Notification for current user with match data
+            const currentUserId = savedItem.postedBy?._id || savedItem.postedBy;
+            const currentUserMessage = savedItem.type === 'lost'
+                ? `🎉 Your lost item "${savedItem.title}" may have been found! (${matchPercentage}% match)`
+                : `🎉 Someone reported a lost item that matches your found item "${savedItem.title}"! (${matchPercentage}% match)`;
+            
+            await createNotification(
+                currentUserId,
+                'match_found',
+                currentUserMessage,
+                {
+                    itemId: savedItem._id,
+                    itemTitle: savedItem.title,
+                    matchScore: matchScore,
+                    matchData: {
+                        score: matchScore,
+                        commonFeatures: topMatch.commonFeatures,
+                        matchedItemId: topMatch.item._id,
+                        matchedItemTitle: topMatch.item.title,
+                        matchedItemImage: topMatch.item.image,
+                        matchedItemLocation: topMatch.item.location,
+                        matchedItemDate: topMatch.item.date,
+                        matchedItemDescription: topMatch.item.description,
+                        matchedItemType: topMatch.item.type,
+                        matchedItemPostedBy: topMatch.item.postedBy?._id || topMatch.item.postedBy
+                    }
+                }
+            );
+            
+            // 🆕 Notification for matched user with match data
+            const matchedItem = topMatch.item;
             const matchedUserId = matchedItem.postedBy?._id || matchedItem.postedBy;
-            if (matchedUserId) {
-                await sendMatchNotification(
-                    matchedUserId, 
-                    matchedItem._id, 
-                    matchedItem.type === 'lost' ? 'item_found' : 'owner_found'
-                );
-            }
+            const matchedUserMessage = matchedItem.type === 'lost'
+                ? `🎉 Your lost item "${matchedItem.title}" may have been found! (${matchPercentage}% match)`
+                : `🎉 Someone reported a found item that matches your lost item "${matchedItem.title}"! (${matchPercentage}% match)`;
+            
+            await createNotification(
+                matchedUserId,
+                'match_found',
+                matchedUserMessage,
+                {
+                    itemId: matchedItem._id,
+                    itemTitle: matchedItem.title,
+                    matchScore: matchScore,
+                    matchData: {
+                        score: matchScore,
+                        commonFeatures: topMatch.commonFeatures,
+                        matchedItemId: savedItem._id,
+                        matchedItemTitle: savedItem.title,
+                        matchedItemImage: savedItem.image,
+                        matchedItemLocation: savedItem.location,
+                        matchedItemDate: savedItem.date,
+                        matchedItemDescription: savedItem.description,
+                        matchedItemType: savedItem.type,
+                        matchedItemPostedBy: savedItem.postedBy?._id || savedItem.postedBy
+                    }
+                }
+            );
             
             console.log(`✅ Found ${foundMatches.length} matches for item ${savedItem._id}`);
+            console.log(`📧 Notifications sent to both users with ${matchPercentage}% match score`);
         }
 
         // Prepare response message
         let responseMessage = "Item reported successfully.";
         if (foundMatches.length > 0) {
+            const matchPercentage = Math.round((foundMatches[0].score / 115) * 100);
             responseMessage = savedItem.type === 'lost' 
-                ? `🎉 Your item is found! ${foundMatches.length} potential match${foundMatches.length > 1 ? 'es' : ''} found. Check it to confirm!` 
-                : `🎉 Owner found! ${foundMatches.length} potential match${foundMatches.length > 1 ? 'es' : ''} found. Check it to confirm!`;
+                ? `🎉 Your item is found! ${foundMatches.length} potential match${foundMatches.length > 1 ? 'es' : ''} found (${matchPercentage}% match). Check it to confirm!` 
+                : `🎉 Owner found! ${foundMatches.length} potential match${foundMatches.length > 1 ? 'es' : ''} found (${matchPercentage}% match). Check it to confirm!`;
         }
 
         return res.status(201).json({
@@ -408,12 +414,10 @@ exports.updateItem = async (req, res) => {
                 item.image = uploadedImage.url;
                 item.imagePublicId = uploadedImage.publicId;
                 
-                // Update AI tags with error handling
                 const newTags = await getAIImageTags(uploadedImage.url);
                 item.imageTags = newTags;
             } catch (uploadError) {
                 console.error("Image update failed:", uploadError.message);
-                // Continue without updating image/AI tags
             }
         }
 
@@ -442,6 +446,18 @@ exports.markItemAsReturned = async (req, res) => {
 
         item.status = 'returned';
         await item.save();
+
+        // Send notification for return
+        const userId = req.user.id;
+        await createNotification(
+            userId,
+            'item_returned',
+            `✅ Item "${item.title}" has been marked as returned! You received +50 trust points!`,
+            {
+                itemId: item._id,
+                itemTitle: item.title
+            }
+        );
 
         const updatedItem = await populateItemQuery(Item.findById(item._id));
         return res.status(200).json({ message: 'Item marked as returned.', item: updatedItem });
