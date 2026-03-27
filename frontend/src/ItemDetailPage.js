@@ -39,7 +39,6 @@ const ItemDetailPage = () => {
 
   // Reset state when itemId changes (but preserve modal if coming from notification)
   useEffect(() => {
-    // Don't reset if we're about to open a modal from notification
     const queryParams = new URLSearchParams(location.search);
     const shouldConfirmMatch = queryParams.get('confirmMatch') === 'true';
     
@@ -118,28 +117,76 @@ const ItemDetailPage = () => {
     fetchItem();
   }, [itemId, item]);
 
+  // 🔥 FIXED: Handle confirm match with fallback
   const handleConfirmMatch = async () => {
-    if (!matchData || !matchData.matchedItem) return;
+    console.log('🔍 handleConfirmMatch called with matchData:', matchData);
+    
+    if (!matchData || !matchData.matchedItem) {
+      console.error('❌ No matchData or matchedItem');
+      alert('No match data found. Please try again.');
+      return;
+    }
+    
+    let matchedUserId = matchData.matchedItem.postedBy;
+    const itemIdToUse = matchData.matchedItem._id;
+    
+    console.log('📦 Initial matchedUserId:', matchedUserId);
+    
+    // 🔥 FALLBACK: If postedBy is missing, try to fetch from API
+    if (!matchedUserId && itemIdToUse) {
+      try {
+        console.log('📦 Fetching item details to get postedBy for item:', itemIdToUse);
+        const response = await fetch(`/api/items/${itemIdToUse}`);
+        const data = await response.json();
+        console.log('📦 Item API response:', data);
+        if (data.item && data.item.postedBy) {
+          matchedUserId = data.item.postedBy._id || data.item.postedBy;
+          console.log('✅ Fetched postedBy from API:', matchedUserId);
+        }
+      } catch (err) {
+        console.error('Failed to fetch postedBy:', err);
+      }
+    }
+    
+    console.log('📦 Final matchedUserId:', matchedUserId);
+    
+    if (!itemIdToUse || !matchedUserId) {
+      console.error('❌ Invalid data:', { itemIdToUse, matchedUserId });
+      alert('Invalid match data. Please try again.');
+      return;
+    }
     
     setShowConfirmModal(false);
     setCreatingChat(true);
     
     try {
       const token = localStorage.getItem('resqToken');
+      if (!token) {
+        alert('Please login first');
+        navigate('/dashboard');
+        return;
+      }
+      
+      const requestBody = {
+        itemId: itemIdToUse,
+        matchedUserId: matchedUserId
+      };
+      
+      console.log('📤 Sending request:', requestBody);
+      
       const response = await fetch('/api/chat/room', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          itemId: matchData.matchedItem._id,
-          matchedUserId: matchData.matchedItem.postedBy
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
-      if (data.success && data.chatRoom) {
+      console.log('📡 Chat room response:', data);
+      
+      if (response.ok && data.success && data.chatRoom) {
         if (pendingMatchNotificationId) {
           await fetch(`/api/notifications/${pendingMatchNotificationId}/read`, {
             method: 'PUT',
@@ -148,10 +195,11 @@ const ItemDetailPage = () => {
         }
         navigate(`/chat/${data.chatRoom._id}`);
       } else {
-        alert('Unable to open chat. Please try again.');
+        console.error('❌ Failed to create chat room:', data);
+        alert(data.message || 'Unable to open chat. Please try again.');
       }
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error('❌ Chat error:', error);
       alert('Failed to open chat. Please try again.');
     } finally {
       setCreatingChat(false);
