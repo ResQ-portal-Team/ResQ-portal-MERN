@@ -8,21 +8,36 @@ exports.getOrCreateChatRoom = async (req, res) => {
   try {
     const { itemId, matchedUserId } = req.body;
     const currentUserId = req.user.id;
-
+    
+    console.log('📡 Creating chat room:', { itemId, matchedUserId, currentUserId });
+    
+    // Check if required fields exist
+    if (!itemId || !matchedUserId) {
+      console.error('❌ Missing required fields:', { itemId, matchedUserId });
+      return res.status(400).json({ message: 'Missing required fields: itemId and matchedUserId' });
+    }
+    
+    // Check if chat room already exists
     let chatRoom = await ChatRoom.findOne({
       itemId,
       'participants.userId': { $all: [currentUserId, matchedUserId] }
     }).populate('participants.userId', 'nickname');
 
     if (!chatRoom) {
+      // Get users
       const currentUser = await User.findById(currentUserId);
       const matchedUser = await User.findById(matchedUserId);
+      
+      if (!currentUser || !matchedUser) {
+        console.error('❌ User not found:', { currentUserExists: !!currentUser, matchedUserExists: !!matchedUser });
+        return res.status(404).json({ message: 'User not found' });
+      }
 
       chatRoom = new ChatRoom({
         itemId,
         participants: [
-          { userId: currentUserId, nickname: currentUser.nickname },
-          { userId: matchedUserId, nickname: matchedUser.nickname }
+          { userId: currentUserId, nickname: currentUser.nickname || 'User' },
+          { userId: matchedUserId, nickname: matchedUser.nickname || 'User' }
         ],
         initiatedBy: currentUserId,
         status: 'active'
@@ -36,12 +51,15 @@ exports.getOrCreateChatRoom = async (req, res) => {
         text: `Chat started. Your identity is protected!`,
         messageType: 'system'
       });
+      
+      // Populate again after save
+      chatRoom = await ChatRoom.findById(chatRoom._id).populate('participants.userId', 'nickname');
     }
 
     res.json({ success: true, chatRoom });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to create chat' });
+    console.error('❌ Create chat room error:', error);
+    res.status(500).json({ message: error.message || 'Failed to create chat' });
   }
 };
 
@@ -53,6 +71,7 @@ exports.getMessages = async (req, res) => {
       .sort({ createdAt: 1 });
     res.json({ success: true, messages });
   } catch (error) {
+    console.error('❌ Get messages error:', error);
     res.status(500).json({ message: 'Failed to get messages' });
   }
 };
@@ -86,6 +105,7 @@ exports.getUserChatRooms = async (req, res) => {
 
     res.json({ success: true, chatRooms: roomsWithLastMsg });
   } catch (error) {
+    console.error('❌ Get user chats error:', error);
     res.status(500).json({ message: 'Failed to get chats' });
   }
 };
@@ -114,6 +134,7 @@ exports.generateOTP = async (req, res) => {
 
     res.json({ success: true, otp });
   } catch (error) {
+    console.error('❌ Generate OTP error:', error);
     res.status(500).json({ message: 'Failed to generate OTP' });
   }
 };
@@ -125,6 +146,10 @@ exports.verifyOTP = async (req, res) => {
     const { otp } = req.body;
     
     const chatRoom = await ChatRoom.findById(chatRoomId);
+    if (!chatRoom) {
+      return res.status(404).json({ message: 'Chat room not found' });
+    }
+    
     if (!chatRoom.handoverOTP || chatRoom.handoverOTP.otp !== otp) {
       return res.status(400).json({ message: 'Invalid OTP' });
     }
@@ -154,6 +179,7 @@ exports.verifyOTP = async (req, res) => {
 
     res.json({ success: true, message: 'Handover complete! +50 points' });
   } catch (error) {
+    console.error('❌ Verify OTP error:', error);
     res.status(500).json({ message: 'Failed to verify OTP' });
   }
 };

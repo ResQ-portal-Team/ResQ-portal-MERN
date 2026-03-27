@@ -21,29 +21,36 @@ const ChatWindow = () => {
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [generatingOTP, setGeneratingOTP] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
   
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
+  // 🔥 FIX: Use correct localStorage key 'resqUser'
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    setCurrentUser(user);
-    
-    if (!chatRoom || !otherUser) {
-      fetchChatRoomDetails();
-    } else {
-      setLoading(false);
+    const userStr = localStorage.getItem('resqUser');
+    console.log('📦 Current user from localStorage:', userStr);
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        console.log('✅ Current user set:', user);
+      } catch (e) {
+        console.error('Failed to parse user:', e);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (chatRoomId && currentUser) {
-      connectSocket();
+      console.log('🔌 Setting up chat for room:', chatRoomId);
       fetchMessages();
+      connectSocket();
     }
     
     return () => {
       if (socket) {
+        console.log('🔌 Disconnecting socket');
         socket.disconnect();
       }
     };
@@ -53,59 +60,58 @@ const ChatWindow = () => {
     scrollToBottom();
   }, [messages]);
 
-  const fetchChatRoomDetails = async () => {
+  const fetchMessages = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/chat/rooms`, {
+      const token = localStorage.getItem('resqToken');
+      console.log('📡 Fetching messages for room:', chatRoomId);
+      const response = await fetch(`/api/chat/room/${chatRoomId}/messages`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (data.success) {
-        const room = data.chatRooms.find(r => r._id === chatRoomId);
-        if (room) {
-          setChatRoom(room);
-          const currentUserId = currentUser?.id;
-          const other = room.participants?.find(p => p.userId?._id !== currentUserId);
-          setOtherUser(other?.userId);
-          setItem(room.itemId);
-        }
+        console.log('✅ Messages fetched:', data.messages.length);
+        setMessages(data.messages);
       }
     } catch (error) {
-      console.error('Failed to fetch chat details:', error);
+      console.error('❌ Failed to fetch messages:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const connectSocket = () => {
-    const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000');
-    setSocket(newSocket);
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+    console.log('🔌 Connecting to socket:', socketUrl);
     
-    newSocket.emit('join-room', chatRoomId);
+    const newSocket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+    
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected! ID:', newSocket.id);
+      setSocketConnected(true);
+      newSocket.emit('join-room', chatRoomId);
+      console.log('📡 Joined room:', chatRoomId);
+    });
+    
+    newSocket.on('connect_error', (err) => {
+      console.error('❌ Socket connection error:', err.message);
+      setSocketConnected(false);
+    });
     
     newSocket.on('receive-message', (message) => {
+      console.log('📨 Received message:', message);
       setMessages(prev => [...prev, message]);
     });
     
-    newSocket.on('user-typing', () => {
+    newSocket.on('user-typing', ({ userId }) => {
+      console.log('✍️ User typing:', userId);
       setIsTyping(true);
       setTimeout(() => setIsTyping(false), 1000);
     });
-  };
-
-  const fetchMessages = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/chat/room/${chatRoomId}/messages`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setMessages(data.messages);
-      }
-    } catch (error) {
-      console.error('Failed to fetch messages:', error);
-    }
+    
+    setSocket(newSocket);
   };
 
   const scrollToBottom = () => {
@@ -113,19 +119,37 @@ const ChatWindow = () => {
   };
 
   const sendMessage = () => {
-    if (!newMessage.trim() || !socket) return;
+    if (!newMessage.trim()) {
+      console.log('⚠️ Empty message, not sending');
+      return;
+    }
     
-    socket.emit('send-message', {
+    if (!socket || !socketConnected) {
+      console.error('❌ Socket not connected!');
+      alert('Chat not connected. Please refresh the page.');
+      return;
+    }
+    
+    if (!currentUser) {
+      console.error('❌ No current user!');
+      alert('Please login again.');
+      return;
+    }
+    
+    const messageData = {
       chatRoomId,
-      senderId: currentUser?.id,
-      senderNickname: currentUser?.nickname,
-      text: newMessage
-    });
+      senderId: currentUser.id,
+      senderNickname: currentUser.nickname || currentUser.realName || 'User',
+      text: newMessage.trim()
+    };
+    
+    console.log('📤 Sending message:', messageData);
+    socket.emit('send-message', messageData);
     setNewMessage('');
   };
 
   const handleTyping = () => {
-    if (!socket) return;
+    if (!socket || !socketConnected) return;
     socket.emit('typing', { chatRoomId, userId: currentUser?.id });
     
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -137,7 +161,7 @@ const ChatWindow = () => {
   const generateOTP = async () => {
     setGeneratingOTP(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('resqToken');
       const response = await fetch(`/api/chat/room/${chatRoomId}/otp`, {
         method: 'POST',
         headers: {
@@ -164,7 +188,7 @@ const ChatWindow = () => {
     }
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('resqToken');
       const response = await fetch(`/api/chat/room/${chatRoomId}/verify`, {
         method: 'POST',
         headers: {
@@ -212,6 +236,11 @@ const ChatWindow = () => {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          {socketConnected ? (
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          ) : (
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+          )}
           <Shield className="w-4 h-4 text-green-600" />
           <span className="text-xs text-gray-500 dark:text-gray-400">Anonymous Chat</span>
         </div>
@@ -219,14 +248,19 @@ const ChatWindow = () => {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-500 mt-10">
+            No messages yet. Start the conversation!
+          </div>
+        )}
         {messages.map((msg, idx) => (
           <div key={idx} className={msg.senderId === currentUser?.id ? 'text-right' : 'text-left'}>
             <div className={`inline-block max-w-xs px-4 py-2 rounded-lg ${
               msg.senderId === currentUser?.id 
                 ? 'bg-green-600 text-white' 
-                : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white shadow'
             }`}>
-              <div className="text-xs opacity-75 mb-1">{msg.senderNickname}</div>
+              <div className="text-xs opacity-75 mb-1">{msg.senderNickname || 'User'}</div>
               <div>{msg.text}</div>
               <div className="text-xs opacity-50 mt-1">
                 {new Date(msg.createdAt).toLocaleTimeString()}
