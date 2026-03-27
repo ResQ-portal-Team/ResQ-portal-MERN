@@ -26,15 +26,12 @@ const ChatWindow = () => {
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // 🔥 FIX: Use correct localStorage key 'resqUser'
   useEffect(() => {
     const userStr = localStorage.getItem('resqUser');
-    console.log('📦 Current user from localStorage:', userStr);
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
         setCurrentUser(user);
-        console.log('✅ Current user set:', user);
       } catch (e) {
         console.error('Failed to parse user:', e);
       }
@@ -43,14 +40,12 @@ const ChatWindow = () => {
 
   useEffect(() => {
     if (chatRoomId && currentUser) {
-      console.log('🔌 Setting up chat for room:', chatRoomId);
       fetchMessages();
       connectSocket();
     }
     
     return () => {
       if (socket) {
-        console.log('🔌 Disconnecting socket');
         socket.disconnect();
       }
     };
@@ -63,17 +58,15 @@ const ChatWindow = () => {
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('resqToken');
-      console.log('📡 Fetching messages for room:', chatRoomId);
       const response = await fetch(`/api/chat/room/${chatRoomId}/messages`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (data.success) {
-        console.log('✅ Messages fetched:', data.messages.length);
         setMessages(data.messages);
       }
     } catch (error) {
-      console.error('❌ Failed to fetch messages:', error);
+      console.error('Failed to fetch messages:', error);
     } finally {
       setLoading(false);
     }
@@ -81,7 +74,6 @@ const ChatWindow = () => {
 
   const connectSocket = () => {
     const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-    console.log('🔌 Connecting to socket:', socketUrl);
     
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
@@ -89,24 +81,20 @@ const ChatWindow = () => {
     });
     
     newSocket.on('connect', () => {
-      console.log('✅ Socket connected! ID:', newSocket.id);
       setSocketConnected(true);
       newSocket.emit('join-room', chatRoomId);
-      console.log('📡 Joined room:', chatRoomId);
     });
     
     newSocket.on('connect_error', (err) => {
-      console.error('❌ Socket connection error:', err.message);
+      console.error('Socket connection error:', err.message);
       setSocketConnected(false);
     });
     
     newSocket.on('receive-message', (message) => {
-      console.log('📨 Received message:', message);
       setMessages(prev => [...prev, message]);
     });
     
-    newSocket.on('user-typing', ({ userId }) => {
-      console.log('✍️ User typing:', userId);
+    newSocket.on('user-typing', () => {
       setIsTyping(true);
       setTimeout(() => setIsTyping(false), 1000);
     });
@@ -119,19 +107,12 @@ const ChatWindow = () => {
   };
 
   const sendMessage = () => {
-    if (!newMessage.trim()) {
-      console.log('⚠️ Empty message, not sending');
-      return;
-    }
-    
+    if (!newMessage.trim()) return;
     if (!socket || !socketConnected) {
-      console.error('❌ Socket not connected!');
       alert('Chat not connected. Please refresh the page.');
       return;
     }
-    
     if (!currentUser) {
-      console.error('❌ No current user!');
       alert('Please login again.');
       return;
     }
@@ -143,7 +124,6 @@ const ChatWindow = () => {
       text: newMessage.trim()
     };
     
-    console.log('📤 Sending message:', messageData);
     socket.emit('send-message', messageData);
     setNewMessage('');
   };
@@ -221,12 +201,13 @@ const ChatWindow = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Header */}
+      {/* Header with Back Button */}
       <div className="bg-white dark:bg-gray-800 p-4 shadow flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => navigate('/chats')}
+            onClick={() => navigate('/chats', { replace: true })}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+            title="Back to chats"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
