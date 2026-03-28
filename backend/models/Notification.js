@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['match_found', 'item_returned', 'new_message'],
+    enum: ['match_found', 'item_returned', 'new_message', 'new_post'],
     required: [true, 'Notification type is required']
   },
   message: {
@@ -34,7 +34,7 @@ const notificationSchema = new mongoose.Schema({
     maxlength: [100, 'Item title cannot exceed 100 characters']
   },
   
-  // 🆕 Match specific fields
+  // Match specific fields
   matchScore: {
     type: Number,
     min: 0,

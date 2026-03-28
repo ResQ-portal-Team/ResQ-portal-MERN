@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle, TrendingUp, MessageCircle } from 'lucide-react';
+import { Bell, X, CheckCircle, TrendingUp, MessageCircle, BellRing } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 
@@ -12,19 +12,24 @@ const NotificationBell = () => {
   useEffect(() => {
     fetchNotifications();
     
-    // 🔥 Connect to socket for real-time notifications
-    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-    const socket = io(socketUrl, {
+    const socket = io('http://localhost:5000', {
       transports: ['websocket', 'polling'],
       withCredentials: true
     });
     
-    socket.on('new-notification', (data) => {
-      console.log('🔔 Real-time notification received:', data);
-      fetchNotifications(); // Refresh notifications immediately
+    socket.on('connect', () => {
+      console.log('✅ Socket connected for notifications!');
+      const user = JSON.parse(localStorage.getItem('resqUser'));
+      if (user && user.id) {
+        socket.emit('user-online', { chatRoomId: 'global', userId: user.id });
+      }
     });
     
-    // Poll every 30 seconds as fallback
+    socket.on('new-notification', (data) => {
+      console.log('🔔 New notification received:', data);
+      fetchNotifications();
+    });
+    
     const interval = setInterval(fetchNotifications, 30000);
     
     return () => {
@@ -46,17 +51,37 @@ const NotificationBell = () => {
         setNotifications(result.notifications);
         const unread = result.notifications.filter(n => !n.read).length;
         setUnreadCount(unread);
-        console.log(`🔔 Notifications fetched: ${result.notifications.length}, Unread: ${unread}`);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     }
   };
 
+  // 🔥 Mark all as read function
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem('resqToken');
+      await fetch('/api/notifications/mark-all-read', {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchNotifications(); // Refresh
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
+
+  // 🔥 Toggle dropdown - mark all as read when opening
+  const toggleDropdown = async () => {
+    if (!isOpen) {
+      // Opening dropdown - mark all as read
+      await markAllAsRead();
+    }
+    setIsOpen(!isOpen);
+  };
+
   const markAsRead = async (notificationId, notification) => {
     try {
-      console.log('🔔 1. Notification clicked:', notification);
-      
       const token = localStorage.getItem('resqToken');
       await fetch(`/api/notifications/${notificationId}/read`, {
         method: 'PUT',
@@ -105,9 +130,12 @@ const NotificationBell = () => {
           navigate(`/items/${notification.itemId}?confirmMatch=true`);
         }
       } else if (notification.type === 'new_message') {
-        // 🔥 Handle new message notification - go to chat
         if (notification.chatRoomId) {
           navigate(`/chat/${notification.chatRoomId}`);
+        }
+      } else if (notification.type === 'new_post') {
+        if (notification.itemId) {
+          navigate(`/items/${notification.itemId}`);
         }
       } else if (notification.type === 'item_returned') {
         navigate(`/items/${notification.itemId}`);
@@ -131,6 +159,8 @@ const NotificationBell = () => {
         return <CheckCircle className="w-5 h-5 text-blue-500" />;
       case 'new_message':
         return <MessageCircle className="w-5 h-5 text-purple-500" />;
+      case 'new_post':
+        return <BellRing className="w-5 h-5 text-orange-500" />;
       default:
         return <Bell className="w-5 h-5 text-gray-500" />;
     }
@@ -145,6 +175,9 @@ const NotificationBell = () => {
     }
     if (notification.type === 'new_message') {
       return notification.message || '📩 New message received!';
+    }
+    if (notification.type === 'new_post') {
+      return notification.message || '📢 New post that might interest you!';
     }
     return notification.message;
   };
@@ -165,7 +198,7 @@ const NotificationBell = () => {
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         className="relative p-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors focus:outline-none"
       >
         <Bell className="w-5 h-5" />
@@ -193,14 +226,13 @@ const NotificationBell = () => {
                   <Bell className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">No notifications yet</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    When someone matches with you or sends a message, you'll see it here
+                    When someone posts an item, matches with you, or sends a message, you'll see it here
                   </p>
                 </div>
               ) : (
                 notifications.map((notification) => {
                   const matchPercentage = getMatchPercentage(notification);
                   const isMatchFound = notification.type === 'match_found';
-                  const isNewMessage = notification.type === 'new_message';
                   
                   return (
                     <div
@@ -218,7 +250,7 @@ const NotificationBell = () => {
                           <p className={`text-sm ${!notification.read ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}>
                             {getNotificationMessage(notification)}
                           </p>
-                          {notification.itemTitle && !isNewMessage && (
+                          {notification.itemTitle && notification.type !== 'new_post' && (
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Item: {notification.itemTitle}
                             </p>
@@ -263,16 +295,7 @@ const NotificationBell = () => {
               <div className="p-2 border-t border-gray-200 dark:border-gray-700 text-center">
                 <button
                   onClick={async () => {
-                    try {
-                      const token = localStorage.getItem('resqToken');
-                      await fetch('/api/notifications/mark-all-read', {
-                        method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                      });
-                      fetchNotifications();
-                    } catch (error) {
-                      console.error('Failed to mark all as read:', error);
-                    }
+                    await markAllAsRead();
                   }}
                   className="text-xs text-green-600 dark:text-green-400 hover:text-green-700"
                 >
