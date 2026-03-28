@@ -1,29 +1,89 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, MapPin, Calendar, ChevronRight, Loader } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { MessageCircle, MapPin, Calendar, ChevronRight, Loader, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const MyChats = () => {
+  const navigate = useNavigate();
   const [chatRooms, setChatRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    setCurrentUser(user);
-    fetchChatRooms();
+    const userStr = localStorage.getItem('resqUser');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        console.log('📦 Current user loaded:', user);
+        setCurrentUser(user);
+      } catch (e) {
+        console.error('Failed to parse user', e);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchChatRooms();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser]);
 
   const fetchChatRooms = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('resqToken');
+      
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      
+      console.log('📡 Fetching chat rooms for user:', currentUser?.id);
+      
       const response = await fetch('/api/chat/rooms', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
+      
       const data = await response.json();
-      if (data.success) {
-        setChatRooms(data.chatRooms);
+      console.log('📡 Raw chat rooms:', data.chatRooms?.length);
+      
+      if (data.success && data.chatRooms) {
+        const userRoomsMap = new Map();
+        
+        data.chatRooms.forEach(room => {
+          const otherParticipant = room.participants?.find(p => {
+            const userId = p.userId?._id || p.userId;
+            return userId !== currentUser?.id;
+          });
+          
+          if (otherParticipant) {
+            const otherUserId = otherParticipant.userId?._id || otherParticipant.userId;
+            
+            if (!userRoomsMap.has(otherUserId) || 
+                new Date(room.updatedAt) > new Date(userRoomsMap.get(otherUserId).updatedAt)) {
+              userRoomsMap.set(otherUserId, room);
+            }
+          }
+        });
+        
+        const groupedRooms = Array.from(userRoomsMap.values());
+        
+        const filteredRooms = groupedRooms.filter(room => {
+          if (room.lastMessage && room.lastMessage.text) {
+            if (room.lastMessage.text === 'Chat started. Your identity is protected!') {
+              return false;
+            }
+            return true;
+          }
+          return false;
+        });
+        
+        console.log(`✅ Final rooms to show: ${filteredRooms.length}`);
+        setChatRooms(filteredRooms);
       }
     } catch (error) {
       console.error('Failed to fetch chats:', error);
@@ -33,8 +93,13 @@ const MyChats = () => {
   };
 
   const getOtherParticipant = (room) => {
-    if (!currentUser) return null;
-    const other = room.participants?.find(p => p.userId?._id !== currentUser.id);
+    if (!currentUser || !room.participants) return null;
+    
+    const other = room.participants.find(p => {
+      const userId = p.userId?._id || p.userId;
+      return userId !== currentUser.id;
+    });
+    
     return other?.userId;
   };
 
@@ -48,6 +113,15 @@ const MyChats = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* Back to Dashboard Button */}
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-800 transition"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        Back to dashboard
+      </button>
+      
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">My Conversations</h1>
       
       {chatRooms.length === 0 ? (
@@ -55,7 +129,7 @@ const MyChats = () => {
           <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300">No conversations yet</h3>
           <p className="text-gray-500 dark:text-gray-400 mt-2">
-            When you match with someone, you can chat here anonymously
+            When you match with someone and start chatting, conversations will appear here
           </p>
           <Link
             to="/dashboard"
@@ -90,7 +164,7 @@ const MyChats = () => {
                       <div>
                         <div className="flex items-center">
                           <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {otherUser?.nickname || 'Anonymous'}
+                            {otherUser?.nickname || otherUser?.realName || 'Anonymous'}
                           </h3>
                           {unreadBadge}
                         </div>
@@ -116,7 +190,6 @@ const MyChats = () => {
                     </div>
                   </div>
                   
-                  {/* Status Badge */}
                   <div className="mt-3 flex items-center space-x-2">
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       room.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -127,9 +200,6 @@ const MyChats = () => {
                        room.status === 'handover' ? 'Handover Ready' :
                        'Completed'}
                     </span>
-                    {room.status === 'handover' && (
-                      <span className="text-xs text-green-600">✓ OTP Generated</span>
-                    )}
                   </div>
                 </div>
               </Link>

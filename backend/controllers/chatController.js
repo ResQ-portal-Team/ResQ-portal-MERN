@@ -3,13 +3,13 @@ const Message = require('../models/Message');
 const Item = require('../models/Item');
 const User = require('../models/User');
 
-// Get or create chat room
+// Get or create chat room (group by user, not by item)
 exports.getOrCreateChatRoom = async (req, res) => {
   try {
     const { itemId, matchedUserId } = req.body;
     const currentUserId = req.user.id;
     
-    console.log('📡 Creating chat room:', { itemId, matchedUserId, currentUserId });
+    console.log('📡 Creating/Getting chat room:', { itemId, matchedUserId, currentUserId });
     
     // Check if required fields exist
     if (!itemId || !matchedUserId) {
@@ -17,9 +17,9 @@ exports.getOrCreateChatRoom = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields: itemId and matchedUserId' });
     }
     
-    // Check if chat room already exists
+    // 🔥 IMPORTANT: Check if a chat room already exists between these two users
+    // (regardless of which item - one chat per user pair)
     let chatRoom = await ChatRoom.findOne({
-      itemId,
       'participants.userId': { $all: [currentUserId, matchedUserId] }
     }).populate('participants.userId', 'nickname');
 
@@ -33,8 +33,9 @@ exports.getOrCreateChatRoom = async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
       }
 
+      // Create new chat room
       chatRoom = new ChatRoom({
-        itemId,
+        itemId, // Store the first item that created this chat
         participants: [
           { userId: currentUserId, nickname: currentUser.nickname || 'User' },
           { userId: matchedUserId, nickname: matchedUser.nickname || 'User' }
@@ -54,6 +55,14 @@ exports.getOrCreateChatRoom = async (req, res) => {
       
       // Populate again after save
       chatRoom = await ChatRoom.findById(chatRoom._id).populate('participants.userId', 'nickname');
+    } else {
+      // 🔥 Update the itemId to the latest item being discussed (optional)
+      // This helps show the most recent item in the chat list
+      if (chatRoom.itemId !== itemId) {
+        await ChatRoom.findByIdAndUpdate(chatRoom._id, { itemId });
+        chatRoom.itemId = itemId;
+      }
+      console.log('✅ Using existing chat room between users');
     }
 
     res.json({ success: true, chatRoom });
