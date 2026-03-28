@@ -1,8 +1,10 @@
 const crypto = require('crypto');
 const Item = require('../models/Item');
+const User = require('../models/User');
 const { ALLOWED_ITEM_CATEGORIES } = require('../constants/itemCategories');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { createNotification } = require('./notificationController');
+const { getIO } = require('../socketServer');
 
 // Gemini Config
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -235,7 +237,39 @@ exports.createItem = async (req, res) => {
 
         const savedItem = await populateItemQuery(Item.findById(newItem._id));
 
-        // Find matching items of opposite type with same category
+        // 🆕 Send notification to ALL active users (except the author)
+        const allActiveUsers = await User.find({
+            _id: { $ne: posterId },  // exclude the author
+            role: { $ne: 'admin' }   // exclude admins
+        }).select('_id');
+
+        console.log(`📢 Sending new post notifications to ${allActiveUsers.length} users`);
+
+        const io = getIO();
+
+        for (const user of allActiveUsers) {
+            const message = savedItem.type === 'lost' 
+                ? `🔍 New lost item reported: "${savedItem.title}" in ${savedItem.category} at ${savedItem.location}`
+                : `🔍 New found item reported: "${savedItem.title}" in ${savedItem.category} at ${savedItem.location}`;
+            
+            await createNotification(
+                user._id,
+                'new_post',
+                message,
+                {
+                    itemId: savedItem._id,
+                    itemTitle: savedItem.title
+                }
+            );
+            
+            // Emit real-time notification
+            if (io) {
+                io.emit('new-notification', { userId: user._id });
+                console.log(`📡 Socket emitted new-notification for user ${user._id}`);
+            }
+        }
+
+        // Find matching items of opposite type with same category (for match notifications)
         const oppositeType = savedItem.type === 'lost' ? 'found' : 'lost';
         const candidates = await populateItemQuery(Item.find({
             type: oppositeType,
@@ -284,7 +318,7 @@ exports.createItem = async (req, res) => {
             const matchScore = topMatch.score;
             const matchPercentage = Math.round((matchScore / 115) * 100);
             
-            // 🆕 Notification for current user with match data
+            // Notification for current user with match data
             const currentUserId = savedItem.postedBy?._id || savedItem.postedBy;
             const currentUserMessage = savedItem.type === 'lost'
                 ? `🎉 Your lost item "${savedItem.title}" may have been found! (${matchPercentage}% match)`
@@ -313,7 +347,7 @@ exports.createItem = async (req, res) => {
                 }
             );
             
-            // 🆕 Notification for matched user with match data
+            // Notification for matched user with match data
             const matchedItem = topMatch.item;
             const matchedUserId = matchedItem.postedBy?._id || matchedItem.postedBy;
             const matchedUserMessage = matchedItem.type === 'lost'
