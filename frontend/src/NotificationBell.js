@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle, TrendingUp } from 'lucide-react';
+import { Bell, X, CheckCircle, TrendingUp, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
 
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
@@ -10,8 +11,26 @@ const NotificationBell = () => {
 
   useEffect(() => {
     fetchNotifications();
+    
+    // 🔥 Connect to socket for real-time notifications
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+    
+    socket.on('new-notification', (data) => {
+      console.log('🔔 Real-time notification received:', data);
+      fetchNotifications(); // Refresh notifications immediately
+    });
+    
+    // Poll every 30 seconds as fallback
     const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearInterval(interval);
+      socket.disconnect();
+    };
   }, []);
 
   const fetchNotifications = async () => {
@@ -27,6 +46,7 @@ const NotificationBell = () => {
         setNotifications(result.notifications);
         const unread = result.notifications.filter(n => !n.read).length;
         setUnreadCount(unread);
+        console.log(`🔔 Notifications fetched: ${result.notifications.length}, Unread: ${unread}`);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -48,13 +68,10 @@ const NotificationBell = () => {
       );
       setUnreadCount(prev => prev - 1);
       
-      // Handle match_found notification
+      // Handle different notification types
       if (notification.type === 'match_found') {
-        // Get matchData from notification
         const matchDataFromNotification = notification.matchData;
         const matchedItemId = matchDataFromNotification?.matchedItemId;
-        
-        console.log('📦 matchDataFromNotification:', matchDataFromNotification);
         
         const matchData = {
           yourItem: {
@@ -79,20 +96,18 @@ const NotificationBell = () => {
           commonFeatures: matchDataFromNotification?.commonFeatures || {}
         };
         
-        console.log('📦 2. Storing match data:', matchData);
         localStorage.setItem('pendingMatchConfirmation', JSON.stringify(matchData));
         localStorage.setItem('pendingMatchNotificationId', notificationId);
         
-        // Verify storage
-        const stored = localStorage.getItem('pendingMatchConfirmation');
-        console.log('✅ 3. Verification - stored data:', stored ? 'YES' : 'NO');
-        
         if (matchedItemId) {
-          console.log('🔗 4. Navigating to:', `/items/${matchedItemId}?confirmMatch=true`);
           navigate(`/items/${matchedItemId}?confirmMatch=true`);
         } else {
-          console.log('🔗 4. Navigating to:', `/items/${notification.itemId}?confirmMatch=true`);
           navigate(`/items/${notification.itemId}?confirmMatch=true`);
+        }
+      } else if (notification.type === 'new_message') {
+        // 🔥 Handle new message notification - go to chat
+        if (notification.chatRoomId) {
+          navigate(`/chat/${notification.chatRoomId}`);
         }
       } else if (notification.type === 'item_returned') {
         navigate(`/items/${notification.itemId}`);
@@ -114,6 +129,8 @@ const NotificationBell = () => {
         return <TrendingUp className="w-5 h-5 text-green-500" />;
       case 'item_returned':
         return <CheckCircle className="w-5 h-5 text-blue-500" />;
+      case 'new_message':
+        return <MessageCircle className="w-5 h-5 text-purple-500" />;
       default:
         return <Bell className="w-5 h-5 text-gray-500" />;
     }
@@ -125,6 +142,9 @@ const NotificationBell = () => {
     }
     if (notification.type === 'item_returned') {
       return '✅ Item successfully returned! +50 trust points!';
+    }
+    if (notification.type === 'new_message') {
+      return notification.message || '📩 New message received!';
     }
     return notification.message;
   };
@@ -150,7 +170,7 @@ const NotificationBell = () => {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
+          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -173,13 +193,14 @@ const NotificationBell = () => {
                   <Bell className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">No notifications yet</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    When someone matches with your item, you'll see it here
+                    When someone matches with you or sends a message, you'll see it here
                   </p>
                 </div>
               ) : (
                 notifications.map((notification) => {
                   const matchPercentage = getMatchPercentage(notification);
                   const isMatchFound = notification.type === 'match_found';
+                  const isNewMessage = notification.type === 'new_message';
                   
                   return (
                     <div
@@ -197,7 +218,7 @@ const NotificationBell = () => {
                           <p className={`text-sm ${!notification.read ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}>
                             {getNotificationMessage(notification)}
                           </p>
-                          {notification.itemTitle && (
+                          {notification.itemTitle && !isNewMessage && (
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Item: {notification.itemTitle}
                             </p>
