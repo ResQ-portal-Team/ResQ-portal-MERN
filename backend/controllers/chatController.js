@@ -2,6 +2,7 @@ const ChatRoom = require('../models/ChatRoom');
 const Message = require('../models/Message');
 const Item = require('../models/Item');
 const User = require('../models/User');
+const { createNotification } = require('./notificationController');
 
 // Get or create chat room (group by user, not by item)
 exports.getOrCreateChatRoom = async (req, res) => {
@@ -125,19 +126,37 @@ exports.generateOTP = async (req, res) => {
     const { chatRoomId } = req.params;
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     
+    const chatRoom = await ChatRoom.findById(chatRoomId);
+    const currentItem = await Item.findById(chatRoom.itemId);
+    
+    // Find the matched item
+    let matchedItem = null;
+    if (currentItem) {
+      matchedItem = await Item.findOne({
+        type: currentItem.type === 'lost' ? 'found' : 'lost',
+        category: currentItem.category,
+        $or: [
+          { matchedWith: currentItem._id },
+          { _id: currentItem.matchedWith }
+        ]
+      });
+    }
+    
     await ChatRoom.findByIdAndUpdate(chatRoomId, {
       status: 'handover',
       handoverOTP: {
         otp,
         generatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 15 * 60000)
+        expiresAt: new Date(Date.now() + 15 * 60000),
+        lostItemId: currentItem?.type === 'lost' ? currentItem._id : matchedItem?._id,
+        foundItemId: currentItem?.type === 'found' ? currentItem._id : matchedItem?._id
       }
     });
 
     await Message.create({
       chatRoomId,
       senderNickname: 'System',
-      text: `Handover OTP: ${otp}. Valid for 15 minutes.`,
+      text: `🔐 Handover OTP: ${otp}\n\nShare this OTP with the other person to complete the handover.\nExpires in 15 minutes.`,
       messageType: 'handover_request'
     });
 
@@ -148,7 +167,7 @@ exports.generateOTP = async (req, res) => {
   }
 };
 
-// Verify OTP
+// Verify OTP - UPDATED: Only finder gets points, both items returned
 exports.verifyOTP = async (req, res) => {
   try {
     const { chatRoomId } = req.params;
@@ -172,21 +191,75 @@ exports.verifyOTP = async (req, res) => {
     chatRoom.status = 'closed';
     await chatRoom.save();
 
-    // Update item and add points
-    await Item.findByIdAndUpdate(chatRoom.itemId, { status: 'returned' });
-    await User.updateMany(
-      { _id: { $in: chatRoom.participants.map(p => p.userId) } },
-      { $inc: { trustScore: 50 } }
-    );
+    // Get both items
+    const currentItem = await Item.findById(chatRoom.itemId);
+    const matchedItem = await Item.findOne({
+      type: currentItem.type === 'lost' ? 'found' : 'lost',
+      category: currentItem.category,
+      $or: [
+        { matchedWith: currentItem._id },
+        { _id: currentItem.matchedWith }
+      ]
+    });
+    
+    // 🔥 Mark BOTH items as returned
+    let finderId = null;
+    let finderItemTitle = null;
+    
+    if (currentItem) {
+      currentItem.status = 'returned';
+      await currentItem.save();
+      console.log(`✅ Item ${currentItem._id} (${currentItem.type}) marked as returned`);
+      
+      if (currentItem.type === 'found') {
+        finderId = currentItem.postedBy?._id || currentItem.postedBy;
+        finderItemTitle = currentItem.title;
+      }
+    }
+    
+    if (matchedItem) {
+      matchedItem.status = 'returned';
+      await matchedItem.save();
+      console.log(`✅ Matched item ${matchedItem._id} (${matchedItem.type}) marked as returned`);
+      
+      if (matchedItem.type === 'found') {
+        finderId = matchedItem.postedBy?._id || matchedItem.postedBy;
+        finderItemTitle = matchedItem.title;
+      }
+    }
+    
+    // 🔥 Give +50 points ONLY to FINDER (who posted the FOUND item)
+    if (finderId) {
+      await User.findByIdAndUpdate(finderId, { $inc: { trustScore: 50 } });
+      console.log(`✅ +50 trust points awarded to finder: ${finderId}`);
+      
+      // Send notification to finder about points
+      await createNotification(
+        finderId,
+        'item_returned',
+        `✅ Item "${finderItemTitle}" successfully returned! You received +50 trust points!`,
+        {
+          itemId: currentItem?._id || matchedItem?._id,
+          itemTitle: finderItemTitle
+        }
+      );
+    }
 
+    // Send system message in chat
     await Message.create({
       chatRoomId,
       senderNickname: 'System',
-      text: '✅ Handover complete! +50 trust points each.',
+      text: `✅ Handover complete! Both items marked as returned.\n\n${finderId ? '+50 trust points awarded to the finder!' : 'Handover completed successfully.'}`,
       messageType: 'handover_confirmed'
     });
 
-    res.json({ success: true, message: 'Handover complete! +50 points' });
+    res.json({ 
+      success: true, 
+      message: finderId 
+        ? 'Handover complete! +50 trust points awarded to finder.' 
+        : 'Handover complete! Items returned successfully.',
+      items: [currentItem, matchedItem].filter(i => i)
+    });
   } catch (error) {
     console.error('❌ Verify OTP error:', error);
     res.status(500).json({ message: 'Failed to verify OTP' });
