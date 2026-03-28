@@ -28,6 +28,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const userRoutes = require('./routes/userRoutes'); // 🆕 ADDED
 const CommunityEvent = require('./models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
 const eventPollController = require('./controllers/eventPollController');
@@ -38,6 +39,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes); // 🆕 ADDED
 
 app.get('/api/community-events', async (req, res) => {
   try {

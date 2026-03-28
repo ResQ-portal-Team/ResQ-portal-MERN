@@ -399,7 +399,13 @@ const Dashboard = () => {
           >
             About Us
           </button>
-          
+          {/* 🆕 Leaderboard Button */}
+          <button
+            onClick={() => navigate('/leaderboard')}
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 flex items-center gap-1"
+          >
+            🏆 Leaderboard
+          </button>
           {/* Chats Button */}
           <button
             onClick={() => navigate('/chats')}

@@ -16,6 +16,7 @@ import ProtectedAdminRoute from './ProtectedAdminRoute';
 import ItemDetailPage from './ItemDetailPage';
 import ContactUs from './ContactUs';
 import AboutUs from './AboutUs';
+import Leaderboard from './Leaderboard'; // 🆕 ADDED
 
 // 🆕 NEW CHAT COMPONENTS
 import MyChats from './MyChats';
@@ -59,6 +60,9 @@ function App() {
 
           {/* The Main Application Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* Leaderboard */}
+          <Route path="/leaderboard" element={<Leaderboard />} />
 
           {/* 🆕 CHAT ROUTES */}
           <Route path="/chats" element={<MyChats />} />
