@@ -1,6 +1,6 @@
 const Message = require('./models/Message');
 const ChatRoom = require('./models/ChatRoom');
-const Notification = require('./models/Notification'); // 🆕 Added
+const Notification = require('./models/Notification');
 
 let io;
 
@@ -13,8 +13,22 @@ const initializeSocket = (server) => {
     }
   });
 
+  // Store connected users
+  const onlineUsers = new Map(); // socketId -> userId
+
   io.on('connection', (socket) => {
     console.log('🔌 New client connected:', socket.id);
+
+    // 🔥 User comes online
+    socket.on('user-online', ({ chatRoomId, userId }) => {
+      onlineUsers.set(socket.id, userId);
+      socket.userId = userId;
+      socket.join(chatRoomId);
+      console.log(`📡 User ${userId} joined room ${chatRoomId}`);
+      
+      // Notify others in the room that user is online
+      socket.to(chatRoomId).emit('user-joined', { userId });
+    });
 
     socket.on('join-room', (roomId) => {
       socket.join(roomId);
@@ -25,7 +39,6 @@ const initializeSocket = (server) => {
       console.log('📨 Received message:', data);
       
       try {
-        // Save message
         const message = await Message.create({
           chatRoomId: data.chatRoomId,
           senderId: data.senderId,
@@ -33,13 +46,12 @@ const initializeSocket = (server) => {
           text: data.text
         });
 
-        // Update chat room
         const chatRoom = await ChatRoom.findByIdAndUpdate(data.chatRoomId, {
           lastMessage: { text: data.text, senderId: data.senderId, sentAt: new Date() },
           updatedAt: new Date()
         }, { new: true });
 
-        // 🆕 Create notification for the other participant
+        // Create notification for other participant
         if (chatRoom && chatRoom.participants) {
           const otherParticipant = chatRoom.participants.find(p => 
             p.userId.toString() !== data.senderId
@@ -54,15 +66,12 @@ const initializeSocket = (server) => {
               itemTitle: 'New message',
               read: false
             });
-            console.log(`📧 Notification created for user: ${otherParticipant.userId}`);
             
-            // 🆕 Emit event to refresh notifications for the other user
             io.emit('new-notification', { userId: otherParticipant.userId });
           }
         }
 
         const populatedMessage = await Message.findById(message._id);
-        
         io.to(data.chatRoomId).emit('receive-message', populatedMessage);
         console.log(`✅ Message broadcast to room ${data.chatRoomId}`);
       } catch (error) {
@@ -78,8 +87,19 @@ const initializeSocket = (server) => {
       socket.to(chatRoomId).emit('user-stop-typing');
     });
 
+    // 🔥 User disconnects
     socket.on('disconnect', () => {
-      console.log('🔌 Client disconnected:', socket.id);
+      const userId = onlineUsers.get(socket.id);
+      console.log('🔌 Client disconnected:', socket.id, 'User:', userId);
+      
+      // Notify all rooms this user was in that they left
+      socket.rooms.forEach(room => {
+        if (room !== socket.id) {
+          socket.to(room).emit('user-left', { userId });
+        }
+      });
+      
+      onlineUsers.delete(socket.id);
     });
   });
   
