@@ -13,20 +13,16 @@ const initializeSocket = (server) => {
     }
   });
 
-  // Store connected users
-  const onlineUsers = new Map(); // socketId -> userId
+  const onlineUsers = new Map();
 
   io.on('connection', (socket) => {
     console.log('🔌 New client connected:', socket.id);
 
-    // 🔥 User comes online
     socket.on('user-online', ({ chatRoomId, userId }) => {
       onlineUsers.set(socket.id, userId);
       socket.userId = userId;
       socket.join(chatRoomId);
       console.log(`📡 User ${userId} joined room ${chatRoomId}`);
-      
-      // Notify others in the room that user is online
       socket.to(chatRoomId).emit('user-joined', { userId });
     });
 
@@ -51,7 +47,6 @@ const initializeSocket = (server) => {
           updatedAt: new Date()
         }, { new: true });
 
-        // Create notification for other participant
         if (chatRoom && chatRoom.participants) {
           const otherParticipant = chatRoom.participants.find(p => 
             p.userId.toString() !== data.senderId
@@ -66,7 +61,6 @@ const initializeSocket = (server) => {
               itemTitle: 'New message',
               read: false
             });
-            
             io.emit('new-notification', { userId: otherParticipant.userId });
           }
         }
@@ -87,18 +81,14 @@ const initializeSocket = (server) => {
       socket.to(chatRoomId).emit('user-stop-typing');
     });
 
-    // 🔥 User disconnects
     socket.on('disconnect', () => {
       const userId = onlineUsers.get(socket.id);
       console.log('🔌 Client disconnected:', socket.id, 'User:', userId);
-      
-      // Notify all rooms this user was in that they left
       socket.rooms.forEach(room => {
         if (room !== socket.id) {
           socket.to(room).emit('user-left', { userId });
         }
       });
-      
       onlineUsers.delete(socket.id);
     });
   });
@@ -106,4 +96,12 @@ const initializeSocket = (server) => {
   console.log('✅ Socket.IO server initialized');
 };
 
-module.exports = { initializeSocket };
+// Get io instance
+const getIO = () => {
+  if (!io) {
+    console.log('⚠️ Socket.io not initialized yet');
+  }
+  return io;
+};
+
+module.exports = { initializeSocket, getIO };
