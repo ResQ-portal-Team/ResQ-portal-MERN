@@ -92,42 +92,53 @@ const ChatWindow = () => {
 
   const connectSocket = () => {
     const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-    const newSocket = io(socketUrl, { transports: ['websocket', 'polling'], withCredentials: true });
-
+    const newSocket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+    
     newSocket.on('connect', () => {
+      console.log('✅ Socket connected!');
       setSocketConnected(true);
-      newSocket.emit('join-room', chatRoomId);
-      // Announce this user is online in this room
       newSocket.emit('user-online', { chatRoomId, userId: currentUser?.id });
+      newSocket.emit('join-room', chatRoomId);
     });
+    
     newSocket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err.message);
+      console.error('❌ Socket connection error:', err.message);
       setSocketConnected(false);
     });
-    newSocket.on('disconnect', () => {
-      setSocketConnected(false);
-      setOtherUserOnline(false);
+    
+    // 🆕 Handle validation errors from server
+    newSocket.on('error', (error) => {
+      console.error('❌ Server error:', error);
+      alert(error.message);
     });
+    
     newSocket.on('receive-message', (message) => {
-      setMessages((prev) => [...prev, message]);
+      console.log('📨 Received message:', message);
+      setMessages(prev => [...prev, message]);
     });
+    
     newSocket.on('user-typing', () => {
       setIsTyping(true);
       setTimeout(() => setIsTyping(false), 1000);
     });
+
     // Other user came online in this room
     newSocket.on('user-joined', ({ userId }) => {
       if (userId !== currentUser?.id) {
         setOtherUserOnline(true);
       }
     });
+
     // Other user left / disconnected
     newSocket.on('user-left', ({ userId }) => {
       if (userId !== currentUser?.id) {
         setOtherUserOnline(false);
       }
     });
-
+    
     setSocket(newSocket);
   };
 
