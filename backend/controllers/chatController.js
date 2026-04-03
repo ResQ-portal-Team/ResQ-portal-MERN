@@ -3,6 +3,8 @@ const Message = require('../models/Message');
 const Item = require('../models/Item');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
+const { filterProfanity, containsProfanity } = require('../utils/profanityFilter');
+const { checkRateLimit } = require('../utils/rateLimiter');
 
 // Get or create chat room (group by user, not by item)
 exports.getOrCreateChatRoom = async (req, res) => {
@@ -12,20 +14,16 @@ exports.getOrCreateChatRoom = async (req, res) => {
     
     console.log('📡 Creating/Getting chat room:', { itemId, matchedUserId, currentUserId });
     
-    // Check if required fields exist
     if (!itemId || !matchedUserId) {
       console.error('❌ Missing required fields:', { itemId, matchedUserId });
       return res.status(400).json({ message: 'Missing required fields: itemId and matchedUserId' });
     }
     
-    // 🔥 IMPORTANT: Check if a chat room already exists between these two users
-    // (regardless of which item - one chat per user pair)
     let chatRoom = await ChatRoom.findOne({
       'participants.userId': { $all: [currentUserId, matchedUserId] }
     }).populate('participants.userId', 'nickname');
 
     if (!chatRoom) {
-      // Get users
       const currentUser = await User.findById(currentUserId);
       const matchedUser = await User.findById(matchedUserId);
       
@@ -34,9 +32,8 @@ exports.getOrCreateChatRoom = async (req, res) => {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Create new chat room
       chatRoom = new ChatRoom({
-        itemId, // Store the first item that created this chat
+        itemId,
         participants: [
           { userId: currentUserId, nickname: currentUser.nickname || 'User' },
           { userId: matchedUserId, nickname: matchedUser.nickname || 'User' }
@@ -46,7 +43,6 @@ exports.getOrCreateChatRoom = async (req, res) => {
       });
       await chatRoom.save();
 
-      // System message
       await Message.create({
         chatRoomId: chatRoom._id,
         senderNickname: 'System',
@@ -54,11 +50,8 @@ exports.getOrCreateChatRoom = async (req, res) => {
         messageType: 'system'
       });
       
-      // Populate again after save
       chatRoom = await ChatRoom.findById(chatRoom._id).populate('participants.userId', 'nickname');
     } else {
-      // 🔥 Update the itemId to the latest item being discussed (optional)
-      // This helps show the most recent item in the chat list
       if (chatRoom.itemId !== itemId) {
         await ChatRoom.findByIdAndUpdate(chatRoom._id, { itemId });
         chatRoom.itemId = itemId;
@@ -129,7 +122,6 @@ exports.generateOTP = async (req, res) => {
     const chatRoom = await ChatRoom.findById(chatRoomId);
     const currentItem = await Item.findById(chatRoom.itemId);
     
-    // Find the matched item
     let matchedItem = null;
     if (currentItem) {
       matchedItem = await Item.findOne({
@@ -191,7 +183,6 @@ exports.verifyOTP = async (req, res) => {
     chatRoom.status = 'closed';
     await chatRoom.save();
 
-    // Get both items
     const currentItem = await Item.findById(chatRoom.itemId);
     const matchedItem = await Item.findOne({
       type: currentItem.type === 'lost' ? 'found' : 'lost',
@@ -202,7 +193,6 @@ exports.verifyOTP = async (req, res) => {
       ]
     });
     
-    // 🔥 Mark BOTH items as returned
     let finderId = null;
     let finderItemTitle = null;
     
@@ -228,12 +218,10 @@ exports.verifyOTP = async (req, res) => {
       }
     }
     
-    // 🔥 Give +50 points ONLY to FINDER (who posted the FOUND item)
     if (finderId) {
       await User.findByIdAndUpdate(finderId, { $inc: { trustScore: 50 } });
       console.log(`✅ +50 trust points awarded to finder: ${finderId}`);
       
-      // Send notification to finder about points
       await createNotification(
         finderId,
         'item_returned',
@@ -245,7 +233,6 @@ exports.verifyOTP = async (req, res) => {
       );
     }
 
-    // Send system message in chat
     await Message.create({
       chatRoomId,
       senderNickname: 'System',
@@ -263,5 +250,76 @@ exports.verifyOTP = async (req, res) => {
   } catch (error) {
     console.error('❌ Verify OTP error:', error);
     res.status(500).json({ message: 'Failed to verify OTP' });
+  }
+};
+
+// 🆕 Socket message handler with validations (to be used in socketServer.js)
+exports.handleSendMessage = async (socket, data, io) => {
+  console.log('📨 Received message:', data);
+  
+  // 1. Empty message check
+  if (!data.text || data.text.trim().length === 0) {
+    socket.emit('error', { message: 'Message cannot be empty.' });
+    console.log('❌ Empty message blocked');
+    return;
+  }
+  
+  // 2. Message length check (max 1000 chars)
+  if (data.text.length > 1000) {
+    socket.emit('error', { message: 'Message too long. Maximum 1000 characters.' });
+    console.log('❌ Message too long blocked');
+    return;
+  }
+  
+  // 3. Rate limit check (spam prevention)
+  const rateLimit = checkRateLimit(data.senderId, 10, 60000);
+  if (!rateLimit.allowed) {
+    socket.emit('error', { message: rateLimit.message || 'Too many messages. Please wait.' });
+    console.log(`❌ Rate limit exceeded for user ${data.senderId}`);
+    return;
+  }
+  
+  // 4. Profanity filter
+  const filteredText = filterProfanity(data.text);
+  data.text = filteredText;
+  
+  try {
+    const message = await Message.create({
+      chatRoomId: data.chatRoomId,
+      senderId: data.senderId,
+      senderNickname: data.senderNickname,
+      text: data.text
+    });
+    
+    const chatRoom = await ChatRoom.findByIdAndUpdate(data.chatRoomId, {
+      lastMessage: { text: data.text, senderId: data.senderId, sentAt: new Date() },
+      updatedAt: new Date()
+    }, { new: true });
+    
+    if (chatRoom && chatRoom.participants) {
+      const otherParticipant = chatRoom.participants.find(p => 
+        p.userId.toString() !== data.senderId
+      );
+      
+      if (otherParticipant) {
+        await createNotification(
+          otherParticipant.userId,
+          'new_message',
+          `📩 New message from ${data.senderNickname}: "${data.text.slice(0, 50)}${data.text.length > 50 ? '...' : ''}"`,
+          {
+            chatRoomId: data.chatRoomId,
+            itemTitle: 'New message'
+          }
+        );
+        io.emit('new-notification', { userId: otherParticipant.userId });
+      }
+    }
+    
+    const populatedMessage = await Message.findById(message._id);
+    io.to(data.chatRoomId).emit('receive-message', populatedMessage);
+    console.log(`✅ Message broadcast to room ${data.chatRoomId}`);
+  } catch (error) {
+    console.error('❌ Error saving message:', error);
+    socket.emit('error', { message: 'Failed to send message. Please try again.' });
   }
 };
