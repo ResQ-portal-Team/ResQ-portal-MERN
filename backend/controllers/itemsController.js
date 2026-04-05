@@ -12,12 +12,30 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const ACTIVE_STATUSES = ['active', 'pending'];
 
 const parseCloudinaryUrl = () => {
+    const cloudinaryUrl = process.env.CLOUDINARY_URL;
+
+    if (cloudinaryUrl) {
+        try {
+            const parsed = new URL(cloudinaryUrl);
+            if (parsed.protocol !== 'cloudinary:') return null;
+
+            const cloudName = parsed.hostname;
+            const apiKey = decodeURIComponent(parsed.username || '');
+            const apiSecret = decodeURIComponent(parsed.password || '');
+
+            if (!cloudName || !apiKey || !apiSecret) return null;
+            return { cloudName, apiKey, apiSecret };
+        } catch (err) {
+            console.error('Invalid CLOUDINARY_URL format:', err.message);
+            return null;
+        }
+    }
+
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
     if (!cloudName || !apiKey || !apiSecret) return null;
-    
     return { cloudName, apiKey, apiSecret };
 };
 
@@ -209,16 +227,12 @@ exports.createItem = async (req, res) => {
         let imageUpload = null;
         let aiTags = [];
 
-        // Image upload and AI Tagging
+        // Image upload and AI tagging. Fail request if image upload fails so the client can retry.
         if (req.body.imageData) {
-            try {
-                imageUpload = await uploadImageToCloudinary(req.body.imageData);
-                if (imageUpload && imageUpload.url) {
-                    aiTags = await getAIImageTags(imageUpload.url);
-                    console.log("✅ Generated AI Tags:", aiTags);
-                }
-            } catch (uploadError) {
-                console.error("Image upload/AI tagging failed:", uploadError.message);
+            imageUpload = await uploadImageToCloudinary(req.body.imageData);
+            if (imageUpload && imageUpload.url) {
+                aiTags = await getAIImageTags(imageUpload.url);
+                console.log("✅ Generated AI Tags:", aiTags);
             }
         }
 
@@ -442,17 +456,13 @@ exports.updateItem = async (req, res) => {
         if (validationError) return res.status(400).json({ message: validationError });
 
         if (req.body.imageData) {
-            try {
-                const uploadedImage = await uploadImageToCloudinary(req.body.imageData);
-                if (item.imagePublicId) await deleteImageFromCloudinary(item.imagePublicId);
-                item.image = uploadedImage.url;
-                item.imagePublicId = uploadedImage.publicId;
-                
-                const newTags = await getAIImageTags(uploadedImage.url);
-                item.imageTags = newTags;
-            } catch (uploadError) {
-                console.error("Image update failed:", uploadError.message);
-            }
+            const uploadedImage = await uploadImageToCloudinary(req.body.imageData);
+            if (item.imagePublicId) await deleteImageFromCloudinary(item.imagePublicId);
+            item.image = uploadedImage.url;
+            item.imagePublicId = uploadedImage.publicId;
+            
+            const newTags = await getAIImageTags(uploadedImage.url);
+            item.imageTags = newTags;
         }
 
         item.title = payload.title;
