@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE, authHeaders } from './config';
 import { PollChartsGrid, downloadPollReportPdf } from './PollBreakdownReport';
+import SiteFooter from './SiteFooter';
 
 const parseJson = async (res) => {
   const t = await res.text();
@@ -451,7 +452,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="bg-slate-900 text-white px-4 py-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">Admin Dashboard</h1>
@@ -479,7 +480,7 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
         <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700">
           <button
             type="button"
@@ -1441,6 +1442,8 @@ const AdminDashboard = () => {
           </form>
         </div>
       )}
+
+      <SiteFooter />
     </div>
   );
 };

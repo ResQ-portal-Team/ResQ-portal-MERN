@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import CommunityHubHeader from './CommunityHubHeader';
 import { API_BASE } from '../config';
+import SiteFooter from '../SiteFooter';
 
 /* ─── Styles ────────────────────────────────────────────────────────────── */
 const STYLES = `
@@ -872,7 +873,7 @@ const CommunityHubContent = () => {
   }, [upcoming]);
 
   return (
-    <div className="ch">
+    <div className="ch flex min-h-screen flex-col">
       <style>{STYLES}</style>
       <CommunityHubHeader sticky />
 
@@ -901,7 +902,7 @@ const CommunityHubContent = () => {
       </div>
 
       {/* Content */}
-      <main id="hub-content" className="ch-main" aria-label="Community Hub Events">
+      <main id="hub-content" className="ch-main flex-1" aria-label="Community Hub Events">
         {loading && <Skeleton />}
 
         {error && (
@@ -927,6 +928,7 @@ const CommunityHubContent = () => {
           </>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 };

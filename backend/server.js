@@ -3,7 +3,22 @@ const mongoose = require('mongoose');
 const path = require('path');
 const cors = require('cors');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
-require('dotenv').config({ path: path.join(__dirname, '.env'), override: false });
+// Backend folder .env wins for EMAIL_*, MONGO_URI, etc. (root .env often lacks Gmail keys).
+require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
+
+const mailUser = (process.env.EMAIL_USER || '').trim();
+const mailPass = String(process.env.EMAIL_PASS || '').replace(/\s/g, '');
+if (mailUser && mailPass) {
+    console.log(`📧 Password-reset email ready (${mailUser})`);
+} else {
+    console.warn('⚠️  EMAIL_USER or EMAIL_PASS missing — forgot-password OTP will not send.');
+}
+
+const resqOtpFlag = String(process.env.RESQ_SHOW_OTP_IN_RESPONSE || '').trim().replace(/\r$/, '').toLowerCase();
+if (['1', 'true', 'yes', 'on'].includes(resqOtpFlag)) {
+    console.warn('⚠️  RESQ_SHOW_OTP_IN_RESPONSE is on — OTP is returned in API JSON (demos only; turn off in production).');
+}
+console.log('📨 OTP copy to sender:', ['0', 'false', 'no', 'off'].includes(String(process.env.RESQ_EMAIL_OTP_COPY_TO_SENDER || '').trim().replace(/\r$/, '').toLowerCase()) ? 'off' : 'on (second email to EMAIL_USER)');
 
 const app = express();
 

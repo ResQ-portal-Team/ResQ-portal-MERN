@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { API_BASE } from './config';
 import { ITEM_CATEGORY_GROUPS } from './itemCategories';
 import MatchSuccessModal from './MatchSuccessModal';
+import SiteFooter from './SiteFooter';
 
 const todayIsoDateLocal = () => {
   const t = new Date();
@@ -178,8 +179,8 @@ const ReportItem = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100 sm:p-6">
-        <div className="max-w-2xl mx-auto">
+      <div className="flex min-h-screen flex-col bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="mx-auto w-full max-w-2xl flex-1 p-4 sm:p-6">
           <button
             onClick={() => navigate('/dashboard')}
             className="mb-4 text-blue-700 font-semibold hover:underline"
@@ -300,6 +301,7 @@ const ReportItem = () => {
             </form>
           </div>
         </div>
+        <SiteFooter />
       </div>
 
       {/* 🆕 Match Success Modal */}
