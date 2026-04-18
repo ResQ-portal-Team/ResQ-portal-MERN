@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import MatchConfirmationModal from './MatchConfirmationModal';
+import SiteFooter from './SiteFooter';
 
 const formatItemDate = (value) => {
   if (!value) return 'Not available';
@@ -267,19 +268,25 @@ const ItemDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-slate-950">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+        </div>
+        <SiteFooter />
       </div>
     );
   }
 
   if (error || !item) {
     return (
-      <div className={`min-h-screen bg-gray-50 py-8 dark:bg-slate-950 ${pageX}`}>
-        <button onClick={() => navigate('/dashboard')} className="mb-6 text-blue-600 hover:underline">
-          ← Back to dashboard
-        </button>
-        <div className="rounded-2xl bg-red-50 p-6 text-red-800">{error || 'Item not found.'}</div>
+      <div className={`flex min-h-screen flex-col bg-gray-50 py-8 dark:bg-slate-950 ${pageX}`}>
+        <div className="flex-1">
+          <button onClick={() => navigate('/dashboard')} className="mb-6 text-blue-600 hover:underline">
+            ← Back to dashboard
+          </button>
+          <div className="rounded-2xl bg-red-50 p-6 text-red-800">{error || 'Item not found.'}</div>
+        </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -291,8 +298,8 @@ const ItemDetailPage = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pb-12">
-        <div className={`mx-auto max-w-7xl pt-6 ${pageX}`}>
+      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-slate-950 pb-12">
+        <div className={`mx-auto w-full max-w-7xl flex-1 pt-6 ${pageX}`}>
           <button
             onClick={() => navigate('/dashboard')}
             className="mb-6 flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -425,6 +432,7 @@ const ItemDetailPage = () => {
             </div>
           </div>
         </div>
+        <SiteFooter />
       </div>
 
       {showConfirmModal && matchData && (

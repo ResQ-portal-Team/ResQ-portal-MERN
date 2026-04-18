@@ -17,6 +17,7 @@ import ItemDetailPage from './ItemDetailPage';
 import ContactUs from './ContactUs';
 import AboutUs from './AboutUs';
 import Leaderboard from './Leaderboard'; // 🆕 ADDED
+import SiteFooter from './SiteFooter';
 
 // 🆕 NEW CHAT COMPONENTS
 import MyChats from './MyChats';
@@ -46,14 +47,17 @@ function App() {
           <Route
             path="/onboarding"
             element={
-              <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-5 font-sans dark:bg-slate-950 dark:text-slate-100">
-                <h1 className="mb-8 text-center text-4xl font-extrabold tracking-tight text-blue-800 dark:text-blue-400">
-                  Welcome to ResQ <br />
-                  <span className="text-lg font-medium text-gray-500 dark:text-slate-400">
-                    Let's set up your profile
-                  </span>
-                </h1>
-                <ChatBot />
+              <div className="flex min-h-screen flex-col bg-gray-50 font-sans dark:bg-slate-950 dark:text-slate-100">
+                <div className="flex flex-1 flex-col items-center justify-center p-5">
+                  <h1 className="mb-8 text-center text-4xl font-extrabold tracking-tight text-blue-800 dark:text-blue-400">
+                    Welcome to ResQ <br />
+                    <span className="text-lg font-medium text-gray-500 dark:text-slate-400">
+                      Let&apos;s set up your profile
+                    </span>
+                  </h1>
+                  <ChatBot />
+                </div>
+                <SiteFooter />
               </div>
             }
           />

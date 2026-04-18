@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Item = require('../models/Item');
 
-const ADMIN_EMAIL = 'admin@my.sliit.lk';
+const ADMIN_EMAIL = 'qwe730375@gmail.com';
 
 function normalizeEmail(value) {
     return String(value || '').trim().toLowerCase();

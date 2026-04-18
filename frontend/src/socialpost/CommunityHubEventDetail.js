@@ -4,6 +4,7 @@ import CommunityHubHeader from './CommunityHubHeader';
 import { API_BASE } from '../config';
 import { youtubeEmbedSrcNoAutoplay, youtubeEmbedSrcWithAutoplay, youtubeEmbedUrl } from './communityHubVideo';
 import { useTheme } from '../ThemeContext';
+import AppSiteFooter from '../SiteFooter';
 
 /* ─── Design tokens (dark = current hub aesthetic; light = readable on white) ─ */
 const T_DARK = {
@@ -417,6 +418,8 @@ export default function CommunityHubEventDetail() {
           </article>
         )}
       </main>
+
+      <AppSiteFooter />
 
       {introPollOpen && (
         <div
