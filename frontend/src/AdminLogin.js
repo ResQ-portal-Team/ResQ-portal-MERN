@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SiteFooter from './SiteFooter';
 import { API_BASE } from './config';
+import ForgotPasswordForm from './ForgotPasswordForm';
 
 const parseJson = async (response) => {
   const text = await response.text();
@@ -18,6 +20,7 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,8 +61,9 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-6 font-sans dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-8 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+    <div className="flex min-h-screen flex-col bg-slate-100 font-sans dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-8 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
         <h1 className="mb-1 text-center text-2xl font-bold text-slate-800 dark:text-slate-100">Admin sign in</h1>
         <p className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400">ResQ Portal</p>
 
@@ -75,7 +79,7 @@ const AdminLogin = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="admin@my.sliit.lk"
+              placeholder="qwe730375@gmail.com"
             />
           </div>
           <div>
@@ -91,7 +95,18 @@ const AdminLogin = () => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               placeholder="••••••••"
             />
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword((open) => !open)}
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Forgot password?
+              </button>
+            </div>
           </div>
+
+          {showForgotPassword && <ForgotPasswordForm initialEmail={email} />}
 
           {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
 
@@ -111,7 +126,9 @@ const AdminLogin = () => {
         >
           ← Back to home
         </button>
+        </div>
       </div>
+      <SiteFooter />
     </div>
   );
 };

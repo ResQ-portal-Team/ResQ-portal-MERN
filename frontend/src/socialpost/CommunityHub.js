@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CommunityHubHeader from './CommunityHubHeader';
+import SiteFooter from '../SiteFooter';
 import './CommunityHub.css';
 
 /** Add your photo to frontend/public/ — change the filename here if needed */
@@ -24,6 +25,7 @@ const CommunityHub = () => {
   }, [navigate]);
 
   return (
+    <>
     <div className="community-hub-root font-sans">
       <section
         className={`community-hub-hero${heroExiting ? ' community-hub-hero--exiting' : ''}`}
@@ -61,6 +63,8 @@ const CommunityHub = () => {
         </div>
       </section>
     </div>
+    <SiteFooter />
+    </>
   );
 };
 

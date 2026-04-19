@@ -1,7 +1,78 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  BarChart2,
+  CalendarDays,
+  LayoutDashboard,
+  Mail,
+  PackageSearch,
+  RefreshCw,
+  Users,
+} from 'lucide-react';
 import { API_BASE, authHeaders } from './config';
 import { PollChartsGrid, downloadPollReportPdf } from './PollBreakdownReport';
+import SiteFooter from './SiteFooter';
+
+const ADMIN_NAV = [
+  {
+    id: 'users',
+    label: 'User management',
+    shortLabel: 'Users',
+    description: 'Accounts & profiles',
+    Icon: Users,
+  },
+  {
+    id: 'items',
+    label: 'Lost & found',
+    shortLabel: 'Lost & found',
+    description: 'Posts & listings',
+    Icon: PackageSearch,
+  },
+  {
+    id: 'community',
+    label: 'Community Hub',
+    shortLabel: 'Community',
+    description: 'Events & media',
+    Icon: CalendarDays,
+  },
+  {
+    id: 'polls',
+    label: 'Event polls',
+    shortLabel: 'Polls',
+    description: 'Feedback & PDFs',
+    Icon: BarChart2,
+  },
+  {
+    id: 'contacts',
+    label: 'Contact Us',
+    shortLabel: 'Contact',
+    description: 'Inbox messages',
+    Icon: Mail,
+  },
+];
+
+const SECTION_INTRO = {
+  users: {
+    title: 'User management',
+    subtitle: 'View, edit, or remove registered student accounts and their posted items.',
+  },
+  items: {
+    title: 'Lost & found',
+    subtitle: 'Moderate lost and found posts: type, category, status, and author.',
+  },
+  community: {
+    title: 'Community Hub',
+    subtitle: 'Publish events, upload banners or video, and move items between upcoming and finished.',
+  },
+  polls: {
+    title: 'Event polls',
+    subtitle: 'See poll summaries per event, open detailed breakdowns, and export PDF reports.',
+  },
+  contacts: {
+    title: 'Contact Us',
+    subtitle: 'Read messages from the site contact form and mark them resolved.',
+  },
+};
 
 const parseJson = async (res) => {
   const t = await res.text();
@@ -81,6 +152,10 @@ const AdminDashboard = () => {
   const [editBannerFile, setEditBannerFile] = useState(null);
   const [editVideoFile, setEditVideoFile] = useState(null);
   const [editEventSubmitting, setEditEventSubmitting] = useState(false);
+
+  const [editItemImage, setEditItemImage] = useState(null);
+  const [itemImageFile, setItemImageFile] = useState(null);
+  const [itemImageSubmitting, setItemImageSubmitting] = useState(false);
 
   const loadUsers = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/admin/users`, { headers: authHeaders() });
@@ -214,6 +289,46 @@ const AdminDashboard = () => {
     } catch (e) {
       setError(e.message);
     } finally {
+      setActionId('');
+    }
+  };
+
+  const openEditItemImage = (it) => {
+    setError('');
+    setEditItemImage({ _id: it._id, title: it.title, image: it.image || null });
+    setItemImageFile(null);
+  };
+
+  const saveItemImage = async (e) => {
+    e.preventDefault();
+    if (!editItemImage) return;
+    if (!itemImageFile) {
+      setError('Choose an image to upload.');
+      return;
+    }
+    if (itemImageFile.size > 8 * 1024 * 1024) {
+      setError('Image must be under 8MB.');
+      return;
+    }
+    setItemImageSubmitting(true);
+    setActionId(`img-${editItemImage._id}`);
+    setError('');
+    try {
+      const imageData = await readFileAsDataUrl(itemImageFile);
+      const res = await fetch(`${API_BASE}/api/admin/item-image/${editItemImage._id}`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ imageData }),
+      });
+      const data = await parseJson(res);
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+      setEditItemImage(null);
+      setItemImageFile(null);
+      await loadItems();
+    } catch (err) {
+      setError(err.message || 'Failed to update image.');
+    } finally {
+      setItemImageSubmitting(false);
       setActionId('');
     }
   };
@@ -450,14 +565,38 @@ const AdminDashboard = () => {
     }
   };
 
+  const navBadge = (id) => {
+    switch (id) {
+      case 'users':
+        return users.length;
+      case 'items':
+        return items.length;
+      case 'community':
+        return communityEventsUpcoming.length + communityEventsFinished.length;
+      case 'polls':
+        return pollEvents.length;
+      case 'contacts':
+        return contacts.filter((c) => c.status !== 'resolved').length;
+      default:
+        return null;
+    }
+  };
+
+  const intro = SECTION_INTRO[tab] || SECTION_INTRO.users;
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="bg-slate-900 text-white px-4 py-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Admin Dashboard</h1>
-          <p className="text-slate-400 text-sm">User &amp; community content management</p>
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <header className="shrink-0 border-b border-slate-800 bg-slate-900 text-white px-4 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/90 text-white">
+            <LayoutDashboard className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight">Admin Dashboard</h1>
+            <p className="text-slate-400 text-sm truncate">User &amp; community content management</p>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
@@ -479,79 +618,91 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={() => setTab('users')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
-              tab === 'users'
-                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            User management
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('items')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
-              tab === 'items'
-                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Lost &amp; found
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('community')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
-              tab === 'community'
-                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Community Hub
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('polls')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
-              tab === 'polls'
-                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Event polls
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('contacts')}
-            className={`px-4 py-2 font-semibold border-b-2 -mb-px transition-colors ${
-              tab === 'contacts'
-                ? 'border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Contact Us
-          </button>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm font-medium dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-            {error}
+      <div className="flex w-full min-h-0 flex-1 flex-col md:flex-row md:items-stretch">
+        <aside className="flex shrink-0 flex-col border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 md:w-64 md:min-h-0 md:border-b-0 md:border-r">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 hidden md:block">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Sections</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">Choose one area at a time</p>
           </div>
-        )}
+          <nav className="p-2 md:p-3 flex flex-row gap-1 overflow-x-auto md:flex-col md:overflow-x-visible md:gap-0.5">
+            {ADMIN_NAV.map(({ id, label, shortLabel, description, Icon }) => {
+              const active = tab === id;
+              const badge = navBadge(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={`flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors md:w-full ${
+                    active
+                      ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600'
+                      : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800/80'
+                  }`}
+                >
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                      active ? 'bg-white/15' : 'bg-slate-100 dark:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold leading-tight md:hidden">{shortLabel}</span>
+                    <span className="hidden md:block text-sm font-semibold leading-tight">{label}</span>
+                    <span className={`hidden md:block text-xs mt-0.5 ${active ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {description}
+                    </span>
+                  </span>
+                  {badge != null && (
+                    <span
+                      className={`hidden sm:inline-flex min-w-[1.5rem] justify-center rounded-full px-1.5 py-0.5 text-xs font-bold ${
+                        active ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="mt-auto p-3 border-t border-slate-100 dark:border-slate-800 hidden md:block">
+            <button
+              type="button"
+              onClick={() => refresh()}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/80"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh data
+            </button>
+          </div>
+        </aside>
 
-        {loading ? (
-          <p className="text-slate-500 dark:text-slate-400">Loading…</p>
-        ) : tab === 'polls' ? (
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex w-full min-h-0 flex-1 flex-col px-4 py-6 sm:px-6 md:px-8 md:py-8">
+            <div className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{intro.title}</h2>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 max-w-3xl">{intro.subtitle}</p>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm font-medium dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+                {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-8 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                <RefreshCw className="h-5 w-5 animate-spin shrink-0" />
+                <p>Loading dashboard data…</p>
+              </div>
+            ) : tab === 'polls' ? (
           <div className="space-y-6">
             <section className="rounded-xl border border-slate-100 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-900">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Event poll management</h2>
+              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">Events with poll data</h3>
               <p className="text-sm text-slate-500 mb-4 dark:text-slate-400">
-                Feedback submitted from Community Hub event pages (attendance, rating, experience, and suggestions).
+                Feedback from Community Hub event pages (attendance, rating, experience, and suggestions).
               </p>
               <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-700">
                 <table className="w-full text-sm text-slate-800 dark:text-slate-200">
@@ -674,7 +825,15 @@ const AdminDashboard = () => {
                     <td className="p-3">{it.category}</td>
                     <td className="p-3">{it.status}</td>
                     <td className="p-3 text-slate-700 dark:text-slate-300">{formatAuthor(it.postedBy)}</td>
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-right space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditItemImage(it)}
+                        disabled={Boolean(actionId)}
+                        className="text-indigo-600 font-semibold hover:underline disabled:opacity-50 dark:text-indigo-400"
+                      >
+                        Edit image
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteItem(it._id)}
@@ -1054,7 +1213,9 @@ const AdminDashboard = () => {
               </div>
             </section>
           </div>
-        )}
+            )}
+          </div>
+        </main>
       </div>
 
       {editCommunityEvent && (
@@ -1391,6 +1552,65 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {editItemImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <form
+            onSubmit={saveItemImage}
+            className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900"
+          >
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Update item image</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2" title={editItemImage.title}>
+              {editItemImage.title}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Replaces the photo on Cloudinary and refreshes AI tags. Server must have CLOUDINARY_URL and GEMINI configured like normal posts.
+            </p>
+            {editItemImage.image && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Current image</p>
+                <img
+                  src={editItemImage.image}
+                  alt=""
+                  className="max-h-40 w-full rounded-lg border border-slate-200 object-contain dark:border-slate-600"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">New image *</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="w-full text-sm"
+                onChange={(e) => setItemImageFile(e.target.files?.[0] || null)}
+              />
+              {itemImageFile && (
+                <p className="text-xs text-slate-500 mt-1">{itemImageFile.name}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditItemImage(null);
+                  setItemImageFile(null);
+                }}
+                disabled={itemImageSubmitting}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 dark:border-slate-600 dark:text-slate-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={itemImageSubmitting || Boolean(actionId)}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold disabled:opacity-50"
+              >
+                {itemImageSubmitting ? 'Uploading…' : 'Save image'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {editUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <form
@@ -1441,6 +1661,10 @@ const AdminDashboard = () => {
           </form>
         </div>
       )}
+
+      <div className="shrink-0 border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
+        <SiteFooter />
+      </div>
     </div>
   );
 };

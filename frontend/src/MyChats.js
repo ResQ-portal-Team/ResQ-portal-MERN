@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, MapPin, Calendar, ChevronRight, Loader, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import SiteFooter from './SiteFooter';
 
 const MyChats = () => {
   const navigate = useNavigate();
@@ -105,14 +106,18 @@ const MyChats = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="w-8 h-8 animate-spin text-green-600" />
+      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-1 items-center justify-center p-6">
+          <Loader className="h-8 w-8 animate-spin text-green-600" />
+        </div>
+        <SiteFooter />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="mx-auto w-full max-w-4xl flex-1 p-6">
       {/* Back to Dashboard Button */}
       <button
         onClick={() => navigate('/dashboard')}
@@ -207,6 +212,8 @@ const MyChats = () => {
           })}
         </div>
       )}
+      </div>
+      <SiteFooter />
     </div>
   );
 };
