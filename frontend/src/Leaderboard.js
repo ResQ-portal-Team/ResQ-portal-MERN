@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Award, Medal, Crown, Star, TrendingUp, Loader, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
 
 const Leaderboard = () => {
   const [users, setUsers] = useState([]);
@@ -8,8 +9,28 @@ const Leaderboard = () => {
   const [timeFrame, setTimeFrame] = useState('all');
   const navigate = useNavigate();
 
+  // 🆕 Connect to socket for real-time updates
   useEffect(() => {
     fetchLeaderboard();
+    
+    const socket = io('http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+    
+    socket.on('leaderboard-update', (data) => {
+      console.log('📊 Real-time leaderboard update received:', data);
+      // Refresh leaderboard when points change
+      fetchLeaderboard();
+    });
+    
+    socket.on('connect', () => {
+      console.log('✅ Leaderboard socket connected');
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
   }, [timeFrame]);
 
   const fetchLeaderboard = async () => {
@@ -22,6 +43,7 @@ const Leaderboard = () => {
       const data = await response.json();
       if (data.success) {
         setUsers(data.users);
+        console.log(`📊 Leaderboard updated: ${data.users.length} users`);
       }
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
@@ -62,7 +84,7 @@ const Leaderboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* 🆕 Back Button */}
+        {/* Back Button */}
         <button
           onClick={() => navigate('/dashboard')}
           className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition"
@@ -170,7 +192,7 @@ const Leaderboard = () => {
                 <div className="mt-3">
                   <div className="w-full bg-white/30 rounded-full h-2">
                     <div
-                      className="bg-white h-2 rounded-full transition-all"
+                      className="bg-white h-2 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(((user.trustScore || 0) / 500) * 100, 100)}%` }}
                     />
                   </div>
