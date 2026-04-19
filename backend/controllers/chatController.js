@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { createNotification } = require('./notificationController');
 const { filterProfanity, containsProfanity } = require('../utils/profanityFilter');
 const { checkRateLimit } = require('../utils/rateLimiter');
+const { emitLeaderboardUpdate } = require('../socketServer');
 
 // Get or create chat room (group by user, not by item)
 exports.getOrCreateChatRoom = async (req, res) => {
@@ -159,7 +160,7 @@ exports.generateOTP = async (req, res) => {
   }
 };
 
-// Verify OTP - UPDATED: Only finder gets points, both items returned
+// Verify OTP - UPDATED: Only finder gets points, both items returned, with leaderboard update
 exports.verifyOTP = async (req, res) => {
   try {
     const { chatRoomId } = req.params;
@@ -218,9 +219,18 @@ exports.verifyOTP = async (req, res) => {
       }
     }
     
+    // 🆕 Give points and emit leaderboard update
     if (finderId) {
-      await User.findByIdAndUpdate(finderId, { $inc: { trustScore: 50 } });
+      const updatedUser = await User.findByIdAndUpdate(
+        finderId,
+        { $inc: { trustScore: 50 } },
+        { new: true }
+      );
       console.log(`✅ +50 trust points awarded to finder: ${finderId}`);
+      console.log(`📊 New trustScore: ${updatedUser.trustScore}`);
+      
+      // 🆕 Emit real-time leaderboard update
+      emitLeaderboardUpdate(finderId, updatedUser.trustScore);
       
       await createNotification(
         finderId,
@@ -253,7 +263,7 @@ exports.verifyOTP = async (req, res) => {
   }
 };
 
-// 🆕 Socket message handler with validations (to be used in socketServer.js)
+// Socket message handler with validations
 exports.handleSendMessage = async (socket, data, io) => {
   console.log('📨 Received message:', data);
   

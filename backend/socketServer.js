@@ -33,27 +33,23 @@ const initializeSocket = (server) => {
       console.log(`📡 Socket ${socket.id} joined room: ${roomId}`);
     });
 
-    // 🔥 UPDATED: Send message with validations
     socket.on('send-message', async (data) => {
       console.log('📨 Received message:', data);
       
       // ========== VALIDATIONS ==========
       
-      // 1. Empty message check
       if (!data.text || data.text.trim().length === 0) {
         socket.emit('error', { message: 'Message cannot be empty.' });
         console.log('❌ Empty message blocked');
         return;
       }
       
-      // 2. Message length check (max 1000 chars)
       if (data.text.length > 1000) {
         socket.emit('error', { message: 'Message too long. Maximum 1000 characters.' });
         console.log('❌ Message too long blocked');
         return;
       }
       
-      // 3. Rate limit check (spam prevention)
       const rateLimit = checkRateLimit(data.senderId, 10, 60000);
       if (!rateLimit.allowed) {
         socket.emit('error', { message: rateLimit.message || 'Too many messages. Please wait.' });
@@ -61,7 +57,6 @@ const initializeSocket = (server) => {
         return;
       }
       
-      // 4. Profanity filter - Replace bad words with ***
       const filteredText = filterProfanity(data.text);
       console.log(`🔍 Original: "${data.text}" → Filtered: "${filteredText}"`);
       data.text = filteredText;
@@ -139,4 +134,16 @@ const getIO = () => {
   return io;
 };
 
-module.exports = { initializeSocket, getIO };
+// 🆕 Emit leaderboard update to all clients
+const emitLeaderboardUpdate = (userId, newTrustScore) => {
+  if (io) {
+    io.emit('leaderboard-update', { 
+      userId, 
+      newTrustScore,
+      timestamp: new Date().toISOString()
+    });
+    console.log(`📊 Leaderboard update emitted for user ${userId} → ${newTrustScore} points`);
+  }
+};
+
+module.exports = { initializeSocket, getIO, emitLeaderboardUpdate };

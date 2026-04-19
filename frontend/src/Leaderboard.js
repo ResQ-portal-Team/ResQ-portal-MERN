@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Award, Medal, Crown, Star, TrendingUp, Loader, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import SiteFooter from './SiteFooter';
+import io from 'socket.io-client';  // 🆕 ADD THIS IMPORT
 
 const Leaderboard = () => {
   const [users, setUsers] = useState([]);
@@ -11,6 +11,20 @@ const Leaderboard = () => {
 
   useEffect(() => {
     fetchLeaderboard();
+    
+    const socket = io('http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+    
+    socket.on('leaderboard-update', (data) => {
+      console.log('📊 Real-time leaderboard update received:', data);
+      fetchLeaderboard();
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
   }, [timeFrame]);
 
   const fetchLeaderboard = async () => {
@@ -54,19 +68,16 @@ const Leaderboard = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-1 items-center justify-center py-16">
-          <Loader className="h-8 w-8 animate-spin text-green-600" />
-        </div>
-        <SiteFooter />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="w-8 h-8 animate-spin text-green-600" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="mx-auto w-full max-w-4xl flex-1 px-4">
-        {/* 🆕 Back Button */}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Back Button */}
         <button
           onClick={() => navigate('/dashboard')}
           className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition"
@@ -174,7 +185,7 @@ const Leaderboard = () => {
                 <div className="mt-3">
                   <div className="w-full bg-white/30 rounded-full h-2">
                     <div
-                      className="bg-white h-2 rounded-full transition-all"
+                      className="bg-white h-2 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(((user.trustScore || 0) / 500) * 100, 100)}%` }}
                     />
                   </div>
@@ -216,7 +227,6 @@ const Leaderboard = () => {
           </div>
         </div>
       </div>
-      <SiteFooter />
     </div>
   );
 };
