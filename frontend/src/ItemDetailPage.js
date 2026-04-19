@@ -12,7 +12,8 @@ const formatItemDate = (value) => {
   });
 };
 
-const pageX = 'w-full px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-20';
+/** Full-width horizontal padding — no max-width cap on the item detail shell */
+const pageX = 'w-full px-4 sm:px-6 lg:px-10 xl:px-14 2xl:px-20';
 
 const normalizeStatus = (status) => {
   const s = (status || 'active').toLowerCase();
@@ -299,7 +300,7 @@ const ItemDetailPage = () => {
   return (
     <>
       <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-slate-950 pb-12">
-        <div className={`mx-auto w-full max-w-7xl flex-1 pt-6 ${pageX}`}>
+        <div className={`w-full max-w-none flex-1 pt-6 ${pageX}`}>
           <button
             onClick={() => navigate('/dashboard')}
             className="mb-6 flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -307,15 +308,20 @@ const ItemDetailPage = () => {
             ← Back to dashboard
           </button>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Left Column - Item Details */}
-            <div className="lg:col-span-2">
+            <div className="min-w-0 lg:col-span-2">
               <div className="overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-slate-800">
-                <div className="relative h-64 bg-gray-100 dark:bg-slate-700">
+                {/* Fixed 4:3 frame — every item uses the same display size; image is cropped to fit */}
+                <div className="relative aspect-[4/3] w-full bg-gray-100 dark:bg-slate-700">
                   {item.image ? (
-                    <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-6xl font-bold text-gray-400">
+                    <div className="absolute inset-0 flex items-center justify-center text-6xl font-bold text-gray-400">
                       {isLost ? 'L' : 'F'}
                     </div>
                   )}
@@ -356,7 +362,7 @@ const ItemDetailPage = () => {
             </div>
 
             {/* Right Column - Chat Section */}
-            <div className="lg:col-span-1">
+            <div className="min-w-0 lg:col-span-1">
               <div className="sticky top-6 overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-slate-800">
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white">
                   <h2 className="text-xl font-bold">Contact Poster</h2>

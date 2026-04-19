@@ -98,3 +98,44 @@ export function authHeaders() {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
+
+/**
+ * Same-origin `/api` first (CRA proxy), then direct API — reliable POST/GET with readable errors.
+ * @param {string} path absolute path starting with /api/...
+ * @param {RequestInit} [init]
+ * @returns {Promise<object>} parsed JSON body
+ */
+export async function fetchJson(path, init = {}) {
+  const bases = getApiBases();
+  let lastError;
+  for (let i = 0; i < bases.length; i += 1) {
+    const baseUrl = bases[i];
+    try {
+      const response = await fetch(`${baseUrl}${path}`, init);
+      const text = await response.text();
+      let data = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { message: text.trim().slice(0, 300) || `HTTP ${response.status}` };
+        }
+      }
+      if (!response.ok) {
+        const err = new Error(
+          data.message || data.error || `Request failed (${response.status})`
+        );
+        err.status = response.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    } catch (err) {
+      lastError = err;
+      if (err.status != null || i === bases.length - 1) {
+        break;
+      }
+    }
+  }
+  throw lastError || new Error('Request failed.');
+}

@@ -47,6 +47,8 @@ const userRoutes = require('./routes/userRoutes'); // 🆕 ADDED
 const CommunityEvent = require('./models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
 const eventPollController = require('./controllers/eventPollController');
+const communityEventSocialController = require('./controllers/communityEventSocialController');
+const { optionalAuthenticate, authenticate } = require('./middleware/authMiddleware');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
@@ -68,6 +70,14 @@ app.get('/api/community-events', async (req, res) => {
 });
 
 app.post('/api/community-events/:id/poll', eventPollController.submit);
+
+app.get(
+  '/api/community-events/:id/social',
+  optionalAuthenticate,
+  communityEventSocialController.getSocial
+);
+app.post('/api/community-events/:id/like', authenticate, communityEventSocialController.toggleLike);
+app.post('/api/community-events/:id/comments', authenticate, communityEventSocialController.addComment);
 
 app.get('/api/community-events/:id', async (req, res) => {
   try {

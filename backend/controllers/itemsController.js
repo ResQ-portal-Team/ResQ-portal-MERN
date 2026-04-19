@@ -6,8 +6,12 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { createNotification } = require('./notificationController');
 const { getIO } = require('../socketServer');
 
-// Gemini Config
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Gemini — only used when GEMINI_API_KEY is set and valid
+const genAI = process.env.GEMINI_API_KEY?.trim()
+    ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+    : null;
+
+let geminiInvalidKeyWarned = false;
 
 const ACTIVE_STATUSES = ['active', 'pending'];
 
@@ -148,6 +152,7 @@ const canManageItem = (item, userId) => String(item.postedBy?._id || item.posted
 // AI Image Tagging with Error Handling
 const getAIImageTags = async (imageUrl) => {
     if (!imageUrl) return [];
+    if (!genAI) return [];
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const prompt = "Analyze this image and list exactly 5 specific keywords about the main object (color, brand, material, type) for a lost and found system. Return ONLY the keywords separated by commas, nothing else (e.g., 'black, samsung, phone, plastic, electronic').";
@@ -176,7 +181,17 @@ const getAIImageTags = async (imageUrl) => {
             .slice(0, 5);
             
     } catch (error) {
-        console.error("❌ AI Tagging Error:", error.message);
+        const msg = String(error?.message || error);
+        if (/API_KEY_INVALID|API key not valid|not valid.*api key/i.test(msg)) {
+            if (!geminiInvalidKeyWarned) {
+                geminiInvalidKeyWarned = true;
+                console.warn(
+                    '⚠️  GEMINI_API_KEY is missing or invalid — AI image tags are disabled. Get a key from https://aistudio.google.com/apikey and set GEMINI_API_KEY in backend/.env'
+                );
+            }
+        } else {
+            console.error('❌ AI Tagging Error:', msg);
+        }
         return [];
     }
 };
@@ -525,5 +540,31 @@ exports.deleteItem = async (req, res) => {
     } catch (error) {
         console.error("Delete Item Error:", error);
         return res.status(500).json({ message: 'Failed to delete item.' });
+    }
+};
+
+/** Admin-only: replace item photo (Cloudinary + AI tags). Body: { imageData } base64 data URL. */
+exports.adminPatchItemImage = async (req, res) => {
+    try {
+        const { imageData } = req.body;
+        if (!imageData || typeof imageData !== 'string') {
+            return res.status(400).json({ message: 'Image is required (base64 data URL).' });
+        }
+
+        const item = await Item.findById(req.params.id);
+        if (!item) return res.status(404).json({ message: 'Item not found.' });
+
+        const uploadedImage = await uploadImageToCloudinary(imageData);
+        if (item.imagePublicId) await deleteImageFromCloudinary(item.imagePublicId);
+        item.image = uploadedImage.url;
+        item.imagePublicId = uploadedImage.publicId;
+        item.imageTags = await getAIImageTags(uploadedImage.url);
+        await item.save();
+
+        const updatedItem = await populateItemQuery(Item.findById(item._id));
+        return res.status(200).json({ message: 'Image updated.', item: updatedItem });
+    } catch (error) {
+        console.error('adminPatchItemImage:', error);
+        return res.status(500).json({ message: error.message || 'Failed to update image.' });
     }
 };
