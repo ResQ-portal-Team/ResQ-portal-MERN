@@ -1,38 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppNavBar from './AppNavBar';
+import SiteFooter from './SiteFooter';
 
 const AboutUs = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* NAVIGATION BAR - KEPT UNCHANGED */}
-      <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white p-4 px-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
-          <span className="text-xl font-bold text-gray-800 tracking-tight text-center dark:text-slate-100">Portal</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            onClick={() => navigate('/contact')}
-            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
-          >
-            Contact Us
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
-          >
-            Dashboard
-          </button>
-        </div>
-      </nav>
+    <div className="flex min-h-screen flex-col bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
+      <AppNavBar />
 
       {/* HEADER SECTION WITH HERO HOLOGRAM BACKGROUND */}
       <section
-        className="w-full bg-no-repeat bg-cover bg-center py-24 md:py-32"
+        className="w-full bg-no-repeat bg-cover bg-center py-6 md:py-8"
         style={{ backgroundImage: "url('/hero-hologram.png.jpg')" }}
       >
         <div className="mx-auto max-w-3xl px-6 text-center text-gray-900 dark:text-white">
@@ -46,7 +26,7 @@ const AboutUs = () => {
       </section>
 
       {/* Main Content Area Container */}
-      <main className="mx-auto max-w-3xl px-6 py-12 md:py-16 space-y-12">
+      <main className="mx-auto w-full max-w-3xl flex-1 space-y-12 px-6 py-12 md:py-16">
         <div className="space-y-12">
           {/* STAGGERED GRID for Mission and Vision */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
@@ -111,6 +91,8 @@ const AboutUs = () => {
           </section>
         </div>
       </main>
+
+      <SiteFooter />
     </div>
   );
 };

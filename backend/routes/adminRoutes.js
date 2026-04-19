@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, requireAdmin } = require('../middleware/authMiddleware');
 const adminController = require('../controllers/adminController');
+const itemsController = require('../controllers/itemsController');
 const communityEventController = require('../controllers/communityEventController');
 const contactController = require('../controllers/contactController');
 const eventPollController = require('../controllers/eventPollController');
@@ -17,6 +18,22 @@ router.delete('/users/:id', authenticate, requireAdmin, adminController.deleteUs
 router.patch('/users/:id', authenticate, requireAdmin, adminController.updateUser);
 
 router.get('/items', authenticate, requireAdmin, adminController.listItems);
+/** Admin replace item photo — prefer this path (avoids some Express/path issues with `/items/:id/image`). */
+router.patch('/item-image/:id', authenticate, requireAdmin, itemsController.adminPatchItemImage);
+router.post('/item-image/:id', authenticate, requireAdmin, itemsController.adminPatchItemImage);
+/** Legacy URL — kept for older frontends */
+router.patch(
+  '/items/:id/image',
+  authenticate,
+  requireAdmin,
+  itemsController.adminPatchItemImage
+);
+router.post(
+  '/items/:id/image',
+  authenticate,
+  requireAdmin,
+  itemsController.adminPatchItemImage
+);
 router.delete('/items/:id', authenticate, requireAdmin, adminController.adminDeleteItem);
 
 router.get('/community-events', authenticate, requireAdmin, communityEventController.list);
