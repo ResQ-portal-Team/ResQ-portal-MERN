@@ -3,16 +3,33 @@ const mongoose = require('mongoose');
 const path = require('path');
 const cors = require('cors');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
-require('dotenv').config({ path: path.join(__dirname, '.env'), override: false });
+// Backend folder .env wins for EMAIL_*, MONGO_URI, etc. (root .env often lacks Gmail keys).
+require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
+
+const mailUser = (process.env.EMAIL_USER || '').trim();
+const mailPass = String(process.env.EMAIL_PASS || '').replace(/\s/g, '');
+if (mailUser && mailPass) {
+    console.log(`📧 Password-reset email ready (${mailUser})`);
+} else {
+    console.warn('⚠️  EMAIL_USER or EMAIL_PASS missing — forgot-password OTP will not send.');
+}
+
+const resqOtpFlag = String(process.env.RESQ_SHOW_OTP_IN_RESPONSE || '').trim().replace(/\r$/, '').toLowerCase();
+if (['1', 'true', 'yes', 'on'].includes(resqOtpFlag)) {
+    console.warn('⚠️  RESQ_SHOW_OTP_IN_RESPONSE is on — OTP is returned in API JSON (demos only; turn off in production).');
+}
+console.log('📨 OTP copy to sender:', ['0', 'false', 'no', 'off'].includes(String(process.env.RESQ_EMAIL_OTP_COPY_TO_SENDER || '').trim().replace(/\r$/, '').toLowerCase()) ? 'off' : 'on (second email to EMAIL_USER)');
 
 const app = express();
 
+// --- PORT Definition - Move this to the TOP ---
+const PORT = process.env.PORT || 5000;
+
 // --- Middleware ---
-/** Base64 video/image payloads need a higher limit; override in .env if needed. */
-const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '50mb';
+const requestBodyLimit = '50mb';
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: true,
     credentials: true,
   })
 );
@@ -24,17 +41,23 @@ const authRoutes = require('./routes/authRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const userRoutes = require('./routes/userRoutes'); // 🆕 ADDED
 const CommunityEvent = require('./models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('./utils/communityEventStatus');
+const eventPollController = require('./controllers/eventPollController');
+const communityEventSocialController = require('./controllers/communityEventSocialController');
+const { optionalAuthenticate, authenticate } = require('./middleware/authMiddleware');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
-/** Admin routes: GET /api/admin/health (no auth), then /users, /items, … (JWT + role admin) */
 app.use('/api/admin', adminRoutes);
-/** Public contact submissions */
 app.use('/api/contacts', contactRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes); // 🆕 ADDED
 
-/** Public list for Community Hub — upcoming vs finished (date + manual) */
 app.get('/api/community-events', async (req, res) => {
   try {
     const raw = await CommunityEvent.find().sort({ startDateTime: 1 }).lean();
@@ -46,7 +69,16 @@ app.get('/api/community-events', async (req, res) => {
   }
 });
 
-/** Single event for hub detail page */
+app.post('/api/community-events/:id/poll', eventPollController.submit);
+
+app.get(
+  '/api/community-events/:id/social',
+  optionalAuthenticate,
+  communityEventSocialController.getSocial
+);
+app.post('/api/community-events/:id/like', authenticate, communityEventSocialController.toggleLike);
+app.post('/api/community-events/:id/comments', authenticate, communityEventSocialController.addComment);
+
 app.get('/api/community-events/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -68,24 +100,23 @@ const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/resq_portal";
 
 mongoose.connect(uri)
     .then(() => {
-        if (uri.includes('127.0.0.1') || uri.includes('localhost')) {
-            console.log("✅ MongoDB Local Connected!");
-        } else {
-            console.log("✅ MongoDB Atlas Connected!");
-        }
+        console.log(uri.includes('127.0.0.1') ? "✅ MongoDB Local Connected!" : "✅ MongoDB Atlas Connected!");
     })
     .catch(err => {
         console.error("❌ MongoDB Connection Error: ", err.message);
-        console.log("💡 Tip: Make sure your MongoDB Server is running locally.");
     });
 
-// --- Basic Route ---
 app.get('/', (req, res) => {
     res.send("ResQ-Portal Backend is running smoothly...");
 });
 
-// --- Server Startup ---
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+// --- Socket.IO Server Initialization ---
+const { initializeSocket } = require('./socketServer');
+
+// Create server and start listening
+const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// Initialize Socket.IO for real-time chat
+initializeSocket(server);

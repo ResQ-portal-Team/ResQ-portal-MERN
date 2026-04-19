@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const CommunityEvent = require('../models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('../utils/communityEventStatus');
+const { removeByEventId: removePollResponsesForEvent } = require('./eventPollController');
 
 const parseCloudinaryUrl = () => {
   const cloudinaryUrl = process.env.CLOUDINARY_URL;
@@ -269,6 +270,7 @@ exports.remove = async (req, res) => {
     }
     await deleteCloudinaryAsset(event.imagePublicId, 'image');
     await deleteCloudinaryAsset(event.videoPublicId, 'video');
+    await removePollResponsesForEvent(event._id);
     await event.deleteOne();
     res.status(200).json({ message: 'Event deleted.' });
   } catch (err) {

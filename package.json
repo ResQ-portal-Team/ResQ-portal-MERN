@@ -8,13 +8,18 @@
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm start",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "seed:community": "node backend/scripts/seedCommunityEvents.js"
+    "seed:community": "node backend/scripts/seedCommunityEvents.js",
+    "seed:lostfound": "node backend/scripts/seedLostFoundItems.js",
+    "seed:student-items": "node backend/scripts/seedStudentUsersLostFound.js",
+    "seed:event-social": "node backend/scripts/seedCommunityEventSocial.js",
+    "cleanup:legacy-social": "node backend/scripts/cleanupLegacySocialOnly.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "nodemon": "^3.1.14"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.3.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.2",
     "cloudinary": "^2.9.0",
@@ -23,6 +28,8 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.3",
-    "multer": "^2.1.1"
+    "multer": "^2.1.1",
+    "nodemailer": "^6.10.1",
+    "socket.io": "^4.8.3"
   }
 }

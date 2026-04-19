@@ -1,6 +1,44 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ITEM_CATEGORY_GROUPS } from './itemCategories';
+import NotificationBell from './NotificationBell';
+import SiteFooter from './SiteFooter';
+import ForgotPasswordForm from './ForgotPasswordForm';
+import { useTheme } from './ThemeContext';
+
+const DASHBOARD_FONT_KEY = 'resq-dashboard-font-scale';
+
+const readDashboardFontScale = () => {
+  try {
+    const v = localStorage.getItem(DASHBOARD_FONT_KEY);
+    if (v === 'sm' || v === 'md' || v === 'lg') return v;
+  } catch {
+    /* ignore */
+  }
+  return 'md';
+};
+
+const dashboardFontPercent = { sm: '93.75%', md: '100%', lg: '112.5%' };
+
+const collectResqLocalStorage = () => {
+  const keys = {};
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('resq')) {
+        const value = localStorage.getItem(key);
+        if (value != null) keys[key] = value;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    keys,
+  };
+};
 
 const createInitialReportForm = () => ({
   title: '',
@@ -11,11 +49,6 @@ const createInitialReportForm = () => ({
   incidentDate: '',
   imageFile: null,
 });
-
-const countWords = (text) => {
-  if (!text || typeof text !== 'string') return 0;
-  return text.trim().split(/\s+/).filter(Boolean).length;
-};
 
 /** Today as YYYY-MM-DD in the browser local calendar (for date input max). */
 const todayIsoDateLocal = () => {
@@ -61,16 +94,22 @@ const formatItemDate = (value) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme, setTheme } = useTheme();
   const itemsSectionRef = useRef(null);
+  const optionsMenuRef = useRef(null);
+  const restoreBackupInputRef = useRef(null);
 
   const [showLogin, setShowLogin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [fontScale, setFontScale] = useState(readDashboardFontScale);
   const [showReportModal, setShowReportModal] = useState(false);
   const [pendingProtectedAction, setPendingProtectedAction] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [loginForgotOpen, setLoginForgotOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [itemsError, setItemsError] = useState('');
@@ -93,6 +132,99 @@ const Dashboard = () => {
       localStorage.removeItem('resqToken');
     }
   }, []);
+
+  useEffect(() => {
+    if (!showOptionsMenu) return undefined;
+    const onDoc = (e) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(e.target)) {
+        setShowOptionsMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [showOptionsMenu]);
+
+  useEffect(() => {
+    try {
+      if (fontScale === 'md') {
+        localStorage.removeItem(DASHBOARD_FONT_KEY);
+      } else {
+        localStorage.setItem(DASHBOARD_FONT_KEY, fontScale);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [fontScale]);
+
+  const handleBackupData = () => {
+    try {
+      const payload = collectResqLocalStorage();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `resq-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setShowOptionsMenu(false);
+    } catch {
+      window.alert('Could not export backup.');
+    }
+  };
+
+  const handleRestoreBackupPick = () => {
+    restoreBackupInputRef.current?.click();
+  };
+
+  const handleRestoreBackupFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = typeof reader.result === 'string' ? reader.result : '';
+        const data = JSON.parse(text);
+        if (!data || typeof data !== 'object' || !data.keys || typeof data.keys !== 'object') {
+          window.alert('Invalid backup file. Expected a ResQ export with a "keys" object.');
+          return;
+        }
+        if (
+          !window.confirm(
+            'Replace saved data on this device with this backup? This overwrites ResQ settings and may include your sign-in token.',
+          )
+        ) {
+          return;
+        }
+        Object.entries(data.keys).forEach(([k, v]) => {
+          if (typeof k === 'string' && k.startsWith('resq') && typeof v === 'string') {
+            localStorage.setItem(k, v);
+          }
+        });
+        const th = localStorage.getItem('resq-theme');
+        if (th === 'light' || th === 'dark') {
+          setTheme(th);
+        }
+        setFontScale(readDashboardFontScale());
+        try {
+          const raw = localStorage.getItem('resqUser');
+          setCurrentUser(raw ? JSON.parse(raw) : null);
+        } catch {
+          setCurrentUser(null);
+        }
+        setShowOptionsMenu(false);
+        window.alert('Backup restored. If something looks wrong, refresh the page.');
+      } catch {
+        window.alert('Could not read backup file.');
+      }
+    };
+    reader.onerror = () => {
+      window.alert('Could not read backup file.');
+    };
+    reader.readAsText(file);
+  };
 
   const requestApi = async (path, options = {}) => {
     const requestOptions = {
@@ -172,6 +304,7 @@ const Dashboard = () => {
       localStorage.setItem('resqUser', JSON.stringify(data.user));
       setCurrentUser(data.user);
       setShowLogin(false);
+      setLoginForgotOpen(false);
       setLoginData({ email: '', password: '' });
 
       if (pendingProtectedAction === 'report') {
@@ -374,63 +507,211 @@ const Dashboard = () => {
   const displayedItems = activeTab === 'active' ? activeItems : returnedItems;
   const foundItemsCount = items.filter((item) => item.type === 'found').length;
 
+  const pageX = 'w-full px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-20';
+
+  const menuBtn =
+    'w-full px-4 py-2.5 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-800';
+  const fontChip = (active) =>
+    `flex-1 rounded-lg border py-1.5 text-center text-xs font-bold transition ${
+      active
+        ? 'border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-300'
+        : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500'
+    }`;
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <nav className="bg-white shadow-sm p-4 flex justify-between items-center px-8 sticky top-0 z-50">
+    <div
+      className="flex min-h-screen w-full flex-col bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100"
+      style={{ fontSize: dashboardFontPercent[fontScale] }}
+    >
+      <nav className={`flex items-center justify-between border-b border-gray-100 bg-white py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sticky top-0 z-50 ${pageX}`}>
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
-          <span className="text-xl font-bold text-gray-800 tracking-tight text-center">Portal</span>
+          <span className="text-xl font-bold text-gray-800 tracking-tight text-center dark:text-slate-100">Portal</span>
         </div>
         <div className="flex items-center gap-6">
           <button
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
             onClick={() => navigate('/community-hub')}
           >
             Community Hub
           </button>
           <button
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
             onClick={() => navigate('/contact')}
           >
             Contact Us
           </button>
           <button
             type="button"
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
+            className="text-gray-600 font-medium transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
             onClick={() => navigate('/about')}
           >
             About Us
           </button>
-          {currentUser ? (
-            <button
-              onClick={() => setShowProfile(true)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200"
-            >
-              My Profile
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowLogin(true)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200"
-            >
-              Sign In
-            </button>
-          )}
+
+          {/* Notification Bell */}
+          <NotificationBell />
+
+          <div className="flex items-center gap-2">
+            {currentUser ? (
+              <button
+                type="button"
+                onClick={() => setShowProfile(true)}
+                className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200"
+              >
+                My Profile
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowLogin(true)}
+                className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200"
+              >
+                Sign In
+              </button>
+            )}
+            <div className="relative" ref={optionsMenuRef}>
+              <input
+                ref={restoreBackupInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={handleRestoreBackupFile}
+                aria-hidden="true"
+                tabIndex={-1}
+              />
+              <button
+                type="button"
+                onClick={() => setShowOptionsMenu((v) => !v)}
+                className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-gray-700 shadow-sm transition hover:border-blue-600 hover:text-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-400"
+                aria-expanded={showOptionsMenu}
+                aria-haspopup="true"
+                aria-label="Options"
+                title="Options"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6" aria-hidden="true">
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                </svg>
+              </button>
+              {showOptionsMenu && (
+                <div className="absolute right-0 top-full z-[60] mt-2 w-64 rounded-xl border border-gray-100 bg-white py-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                  <button
+                    type="button"
+                    className={`${menuBtn} flex items-center justify-between gap-2`}
+                    onClick={() => toggleTheme()}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span aria-hidden="true">{theme === 'dark' ? '🌙' : '☀️'}</span>
+                      Dark mode
+                    </span>
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                      {theme === 'dark' ? 'On' : 'Off'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${menuBtn} flex items-center gap-2`}
+                    onClick={handleBackupData}
+                  >
+                    <span aria-hidden="true">⬇</span> Backup data
+                  </button>
+                  <button
+                    type="button"
+                    className={`${menuBtn} flex items-center gap-2`}
+                    onClick={handleRestoreBackupPick}
+                  >
+                    <span aria-hidden="true">⬆</span> Restore data
+                  </button>
+
+                  <div className="px-4 py-2">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">
+                      Font size
+                    </p>
+                    <div className="flex gap-1.5">
+                      {[
+                        { id: 'sm', label: 'S' },
+                        { id: 'md', label: 'M' },
+                        { id: 'lg', label: 'L' },
+                      ].map(({ id, label }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          className={fontChip(fontScale === id)}
+                          onClick={() => setFontScale(id)}
+                          aria-pressed={fontScale === id}
+                          aria-label={`Font size ${label === 'S' ? 'small' : label === 'M' ? 'medium' : 'large'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="my-1 border-t border-gray-100 dark:border-slate-700" role="separator" />
+
+                  <button
+                    type="button"
+                    className={`${menuBtn} flex items-center gap-2`}
+                    onClick={() => {
+                      setShowOptionsMenu(false);
+                      navigate('/leaderboard');
+                    }}
+                  >
+                    <span aria-hidden="true">🏆</span> Leaderboard
+                  </button>
+                  <button
+                    type="button"
+                    className={`${menuBtn} flex items-center gap-2`}
+                    onClick={() => {
+                      setShowOptionsMenu(false);
+                      navigate('/chats');
+                    }}
+                  >
+                    <span aria-hidden="true">💬</span> Chats
+                  </button>
+                  {currentUser?.role === 'admin' && (
+                    <button
+                      type="button"
+                      className={menuBtn}
+                      onClick={() => {
+                        setShowOptionsMenu(false);
+                        navigate('/admin-dashboard');
+                      }}
+                    >
+                      Admin Dashboard
+                    </button>
+                  )}
+                  {currentUser && (
+                    <button
+                      type="button"
+                      className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                      onClick={() => {
+                        setShowOptionsMenu(false);
+                        handleLogout();
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </nav>
 
       <div
-        className="relative bg-blue-900 text-white py-20 px-8 text-center bg-cover bg-center"
+        className="relative bg-blue-900 text-white py-16 sm:py-20 text-center bg-cover bg-center"
         style={{
           backgroundImage:
             'linear-gradient(rgba(0,0,30,0.7), rgba(0,0,30,0.7)), url("https://images.unsplash.com/photo-1523050853023-8c2d29149f0b?auto=format&fit=crop&q=80")',
         }}
       >
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-6xl font-black mb-6 leading-tight">
+        <div className={`relative z-10 mx-auto ${pageX}`}>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight">
             Lost Something? <span className="text-yellow-400">We&apos;ll Help.</span>
           </h1>
-          <p className="text-xl opacity-90 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
+          <p className="text-lg sm:text-xl opacity-90 mb-10 mx-auto max-w-4xl font-light leading-relaxed">
             Report lost or found items, upload a photo, and keep the active and returned lists organized from one place.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -450,7 +731,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto -mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 px-4 relative z-20">
+      <div className={`mx-auto -mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 relative z-20 ${pageX}`}>
         {[
           { label: 'Items Reported', value: items.length, color: 'text-blue-600' },
           { label: 'Active List', value: activeItems.length, color: 'text-amber-600' },
@@ -459,27 +740,27 @@ const Dashboard = () => {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="bg-white p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-shadow border border-gray-100 flex flex-col items-center text-center"
+            className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-xl transition-shadow hover:shadow-2xl dark:border-slate-700 dark:bg-slate-900"
           >
             <div className={`text-3xl font-black ${stat.color}`}>{stat.value}</div>
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{stat.label}</div>
+            <div className="mt-1 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">{stat.label}</div>
           </div>
         ))}
       </div>
 
-      <div ref={itemsSectionRef} className="max-w-6xl mx-auto py-20 px-4">
+      <div ref={itemsSectionRef} className={`mx-auto py-16 sm:py-20 ${pageX}`}>
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-10">
           <div>
-            <h2 className="text-3xl font-black text-gray-900 mb-2">Lost &amp; Found Board</h2>
-            <p className="text-gray-500">
+            <h2 className="mb-2 text-3xl font-black text-gray-900 dark:text-white">Lost &amp; Found Board</h2>
+            <p className="text-gray-500 dark:text-slate-400">
               Active items stay visible until the author marks them as returned. Returned posts can then be deleted by the same author.
             </p>
           </div>
-          <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 flex gap-2">
+          <div className="flex gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <button
               onClick={() => setActiveTab('active')}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
-                activeTab === 'active' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'active' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               Active List
@@ -487,7 +768,7 @@ const Dashboard = () => {
             <button
               onClick={() => setActiveTab('returned')}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
-                activeTab === 'returned' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === 'returned' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               Returned List
@@ -508,11 +789,11 @@ const Dashboard = () => {
         )}
 
         {itemsLoading ? (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-md p-8 text-center text-gray-500">
+          <div className="rounded-3xl border border-gray-100 bg-white p-8 text-center text-gray-500 shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
             Loading items...
           </div>
         ) : displayedItems.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-dashed border-gray-200 shadow-sm p-12 text-center">
+          <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-12 text-center shadow-sm dark:border-slate-600 dark:bg-slate-900/50">
             <h3 className="text-xl font-bold text-gray-800 mb-2">
               {activeTab === 'active' ? 'No active items yet.' : 'No returned items yet.'}
             </h3>
@@ -531,7 +812,7 @@ const Dashboard = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
             {displayedItems.map((item) => {
               const isAuthor = currentUser?.id === item.postedBy?._id;
               const itemStatus = normalizeStatus(item.status);
@@ -549,9 +830,9 @@ const Dashboard = () => {
                       navigate(`/items/${item._id}`);
                     }
                   }}
-                  className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 hover:shadow-2xl transition-all group duration-300 cursor-pointer"
+                  className="group cursor-pointer overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-md transition-all duration-300 hover:shadow-2xl dark:border-slate-700 dark:bg-slate-900"
                 >
-                  <div className="relative h-56 bg-gray-100 overflow-hidden">
+                  <div className="relative h-56 overflow-hidden bg-gray-100 dark:bg-slate-800">
                     <span
                       className={`absolute top-4 left-4 z-10 text-white text-[10px] uppercase font-black px-3 py-1 rounded-full tracking-tighter ${
                         item.type === 'lost' ? 'bg-red-500' : 'bg-emerald-500'
@@ -642,7 +923,7 @@ const Dashboard = () => {
 
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[100] p-4 overflow-y-auto">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-2xl relative animate-in fade-in zoom-in duration-300 my-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+          <div className="relative my-6 max-h-[calc(100vh-3rem)] w-full max-w-2xl animate-in overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl fade-in zoom-in duration-300 dark:bg-slate-900">
             <button onClick={handleReportModalClose} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">
               x
             </button>
@@ -661,7 +942,7 @@ const Dashboard = () => {
                     name="type"
                     value={reportForm.type}
                     onChange={handleReportFormChange}
-                    className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                    className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                   >
                     <option value="lost">Lost item</option>
                     <option value="found">Found item</option>
@@ -673,7 +954,7 @@ const Dashboard = () => {
                     name="category"
                     value={reportForm.category}
                     onChange={handleReportFormChange}
-                    className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                    className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                   >
                     <option value="">Select a category</option>
                     {ITEM_CATEGORY_GROUPS.map((group) => (
@@ -699,7 +980,7 @@ const Dashboard = () => {
                   value={reportForm.incidentDate}
                   max={todayIsoDateLocal()}
                   onChange={handleReportFormChange}
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
               </div>
 
@@ -711,7 +992,7 @@ const Dashboard = () => {
                   value={reportForm.title}
                   onChange={handleReportFormChange}
                   placeholder="Black backpack"
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
               </div>
 
@@ -723,7 +1004,7 @@ const Dashboard = () => {
                   value={reportForm.location}
                   onChange={handleReportFormChange}
                   placeholder="Main hall, library, Lab 01..."
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
               </div>
 
@@ -735,7 +1016,7 @@ const Dashboard = () => {
                   value={reportForm.description}
                   onChange={handleReportFormChange}
                   placeholder="Add identifying details that help other students recognize the item."
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all resize-y min-h-[120px]"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all resize-y min-h-[120px]"
                 />
               </div>
 
@@ -746,7 +1027,7 @@ const Dashboard = () => {
                   name="imageFile"
                   accept="image/*"
                   onChange={handleReportFormChange}
-                  className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                  className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
                 />
                 <p className="text-xs text-gray-400 mt-2">
                   {reportForm.imageFile ? `Selected: ${reportForm.imageFile.name}` : 'Optional. If provided, the image will be uploaded to Cloudinary.'}
@@ -778,11 +1059,19 @@ const Dashboard = () => {
 
       {showLogin && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative animate-in fade-in zoom-in duration-300">
-            <button onClick={() => setShowLogin(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">
+          <div
+            className={`relative w-full animate-in rounded-3xl bg-white p-8 shadow-2xl fade-in zoom-in duration-300 dark:bg-slate-900 ${loginForgotOpen ? 'max-w-lg' : 'max-w-md'}`}
+          >
+            <button
+              onClick={() => {
+                setShowLogin(false);
+                setLoginForgotOpen(false);
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl"
+            >
               x
             </button>
-            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login to ResQ</h2>
+            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-slate-100">Login to ResQ</h2>
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <input
                 type="email"
@@ -790,7 +1079,7 @@ const Dashboard = () => {
                 value={loginData.email}
                 onChange={handleLoginInputChange}
                 placeholder="Student Email"
-                className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
               />
               <input
                 type="password"
@@ -798,8 +1087,17 @@ const Dashboard = () => {
                 value={loginData.password}
                 onChange={handleLoginInputChange}
                 placeholder="Password"
-                className="w-full p-4 border border-gray-100 bg-gray-50 rounded-xl outline-none focus:border-blue-600 transition-all"
+                className="w-full p-4 rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 outline-none focus:border-blue-600 transition-all"
               />
+              <div className="flex justify-end -mt-2">
+                <button
+                  type="button"
+                  onClick={() => setLoginForgotOpen((open) => !open)}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400"
+                >
+                  Forgot password?
+                </button>
+              </div>
               {loginError && <p className="text-sm text-red-600 font-medium">{loginError}</p>}
               <button
                 type="submit"
@@ -808,20 +1106,29 @@ const Dashboard = () => {
               >
                 {loginLoading ? 'Signing In...' : 'Sign In'}
               </button>
-              <p className="text-center text-sm text-gray-500 mt-4">
-                Don&apos;t have an account?{' '}
-                <span onClick={() => navigate('/onboarding')} className="text-blue-600 font-bold cursor-pointer hover:underline">
-                  Register with AI
-                </span>
-              </p>
             </form>
+            {loginForgotOpen && (
+              <div className="mt-4 max-h-[min(70vh,28rem)] overflow-y-auto border-t border-gray-100 pt-4 dark:border-slate-700">
+                <ForgotPasswordForm initialEmail={loginData.email} />
+              </div>
+            )}
+            <p className="mt-4 text-center text-sm text-gray-500 dark:text-slate-400">
+              Don&apos;t have an account?{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/onboarding')}
+                className="border-0 bg-transparent p-0 text-blue-600 font-bold hover:underline"
+              >
+                Register with AI
+              </button>
+            </p>
           </div>
         </div>
       )}
 
       {pendingDeleteItem && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 relative">
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl dark:bg-slate-900">
             <button
               onClick={closeDeleteModal}
               disabled={Boolean(actionItemId)}
@@ -873,7 +1180,7 @@ const Dashboard = () => {
 
       {showProfile && currentUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-xl relative animate-in fade-in zoom-in duration-300">
+          <div className="relative w-full max-w-xl animate-in rounded-3xl bg-white p-8 shadow-2xl fade-in zoom-in duration-300 dark:bg-slate-900">
             <button onClick={() => setShowProfile(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl">
               x
             </button>
@@ -947,9 +1254,7 @@ const Dashboard = () => {
         </button>
       )}
 
-      <footer className="text-center py-12 text-gray-400 text-xs font-medium border-t bg-white mt-12">
-        Copyright 2026 ResQ Portal | SLIIT Campus. Built for students, by students.
-      </footer>
+      <SiteFooter />
     </div>
   );
 };

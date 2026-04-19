@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from './config';
+import AppNavBar from './AppNavBar';
+import SiteFooter from './SiteFooter';
 
 const initialForm = { name: '', email: '', subject: '', message: '' };
 
@@ -10,7 +12,6 @@ const parseResponseBody = async (res) => {
   try {
     return JSON.parse(text);
   } catch (_err) {
-    // Some proxy/server errors return HTML (e.g., <!DOCTYPE ...>).
     return { message: 'Server returned a non-JSON response. Please check backend server and API route.' };
   }
 };
@@ -37,12 +38,12 @@ const ContactUs = () => {
     }
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('resqToken');
+      const auth = localStorage.getItem('resqToken');
       const res = await fetch(`${API_BASE}/api/contacts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
         },
         body: JSON.stringify(form),
       });
@@ -50,8 +51,6 @@ const ContactUs = () => {
       if (!res.ok) throw new Error(data.message || 'Failed to send message.');
       setNotice(data.message || 'Message sent.');
       setForm(initialForm);
-      // Optional: redirect back after a short delay
-      // setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
       setError(err.message || 'Failed to send message.');
     } finally {
@@ -59,97 +58,140 @@ const ContactUs = () => {
     }
   };
 
+  const inputClass =
+    'w-full rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3.5 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-blue-400';
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <nav className="bg-white shadow-sm p-4 flex justify-between items-center px-8">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
-          <span className="text-xl font-bold text-gray-800 tracking-tight text-center">Portal</span>
+    <div className="flex min-h-screen flex-col bg-[#f8fafc] font-sans selection:bg-blue-100 dark:bg-slate-950 dark:text-slate-100 dark:selection:bg-blue-900/40">
+      <AppNavBar />
+
+      <main className="mx-auto w-full max-w-7xl flex-1 px-2 pb-24 pt-8 md:pt-10">
+        <div className="relative mb-12 md:mb-16">
+          <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-[100px] dark:bg-blue-400/10" />
+          <p className="relative mb-2 text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+            Get in touch
+          </p>
+          <h1 className="relative mb-4 text-4xl font-black leading-tight text-gray-900 dark:text-white md:text-6xl md:leading-[1.1]">
+            Contact{' '}
+            <span className="italic text-blue-600 dark:text-blue-400">ResQ</span>
+          </h1>
+          <p className="relative max-w-2xl text-lg leading-relaxed text-gray-500 dark:text-slate-400 md:text-xl">
+            Questions, feedback, or campus lost &amp; found support — the admin team reads every message.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            onClick={() => navigate('/about')}
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
-          >
-            About Us
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="text-gray-600 font-medium hover:text-blue-600 transition"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </nav>
 
-      <div className="max-w-3xl mx-auto p-6">
-        <h1 className="text-3xl font-black text-gray-900 mb-2">Contact us</h1>
-        <p className="text-gray-500 mb-6">
-          Have a question or feedback? Send us a message and the admin team will review it.
-        </p>
-
-        {notice && <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800 text-sm">{notice}</div>}
-        {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">{error}</div>}
-
-        <form onSubmit={onSubmit} className="bg-white rounded-2xl shadow border border-gray-100 p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Your name</label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={onChange}
-                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
-                placeholder="Full name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={onChange}
-                className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
-                placeholder="you@my.sliit.lk"
-              />
+        <div className="grid items-start gap-10 lg:grid-cols-12 lg:gap-14">
+          <div className="lg:col-span-5">
+            <div className="space-y-4">
+              <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="mb-2 text-2xl">✉️</div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">We reply soon</h2>
+                <p className="mt-2 text-sm leading-relaxed text-gray-500 dark:text-slate-400">
+                  Use your SLIIT email when possible so we can verify and respond faster.
+                </p>
+              </div>
+              <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="mb-2 text-2xl">🛡️</div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Signed-in users</h2>
+                <p className="mt-2 text-sm leading-relaxed text-gray-500 dark:text-slate-400">
+                  Log in before sending to link your ticket to your account and get resolution updates in the bell
+                  above.
+                </p>
+              </div>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Subject</label>
-            <input
-              name="subject"
-              value={form.subject}
-              onChange={onChange}
-              className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none"
-              placeholder="How can we help?"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
-            <textarea
-              name="message"
-              rows={5}
-              value={form.message}
-              onChange={onChange}
-              className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-600 outline-none resize-y"
-              placeholder="Write your message here..."
-            />
-          </div>
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition disabled:opacity-70"
+          <div className="lg:col-span-7">
+            {notice && (
+              <div className="mb-6 rounded-2xl border border-green-200/80 bg-green-50 px-5 py-4 text-sm font-medium text-green-800 dark:border-green-800/50 dark:bg-green-950/40 dark:text-green-300">
+                {notice}
+              </div>
+            )}
+            {error && (
+              <div className="mb-6 rounded-2xl border border-red-200/80 bg-red-50 px-5 py-4 text-sm font-medium text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                {error}
+              </div>
+            )}
+
+            <form
+              onSubmit={onSubmit}
+              className="space-y-5 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:border-slate-700 dark:bg-slate-800/80 dark:shadow-none md:p-10"
             >
-              {submitting ? 'Sending…' : 'Send message'}
-            </button>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                    Your name
+                  </label>
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={onChange}
+                    className={inputClass}
+                    placeholder="Full name"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={onChange}
+                    className={inputClass}
+                    placeholder="you@my.sliit.lk"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                  Subject
+                </label>
+                <input
+                  name="subject"
+                  value={form.subject}
+                  onChange={onChange}
+                  className={inputClass}
+                  placeholder="How can we help?"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                  Message
+                </label>
+                <textarea
+                  name="message"
+                  rows={5}
+                  value={form.message}
+                  onChange={onChange}
+                  className={`${inputClass} resize-y min-h-[140px]`}
+                  placeholder="Write your message here…"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="rounded-2xl border-2 border-gray-200 px-8 py-4 text-base font-bold text-gray-800 transition hover:border-blue-600 hover:bg-white hover:text-blue-600 dark:border-slate-600 dark:text-slate-200 dark:hover:border-blue-400 dark:hover:bg-slate-800"
+                >
+                  Back to home
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="rounded-2xl bg-blue-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-blue-200 transition hover:bg-blue-700 disabled:opacity-60 dark:shadow-blue-900/40"
+                >
+                  {submitting ? 'Sending…' : 'Send message'}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 };
