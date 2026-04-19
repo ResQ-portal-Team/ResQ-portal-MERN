@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ThumbsUp, MessageCircle } from 'lucide-react';
 import CommunityHubHeader from './CommunityHubHeader';
-import { API_BASE } from '../config';
+import { authHeaders, fetchJson, getJson } from '../config';
 import { youtubeEmbedSrcNoAutoplay, youtubeEmbedSrcWithAutoplay, youtubeEmbedUrl } from './communityHubVideo';
 import { useTheme } from '../ThemeContext';
 import AppSiteFooter from '../SiteFooter';
@@ -114,6 +115,17 @@ export default function CommunityHubEventDetail() {
   /** No localStorage: feedback popup shows on every visit to this page */
   const [pollGateDismissed, setPollGateDismissed] = useState(false);
 
+  const [social, setSocial] = useState(null);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [likePosting, setLikePosting] = useState(false);
+  const [commentPosting, setCommentPosting] = useState(false);
+  const [replyTargetId, setReplyTargetId] = useState(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replyPosting, setReplyPosting] = useState(false);
+  const [socialError, setSocialError] = useState('');
+  const commentInputRef = useRef(null);
+
   useEffect(() => {
     setPollGateDismissed(false);
     setPollSubmitted(false);
@@ -132,10 +144,8 @@ export default function CommunityHubEventDetail() {
     (async () => {
       setError(''); setLoading(true); setEvent(null);
       try {
-        const r = await fetch(`${API_BASE}/api/community-events/${eventId}`);
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.message || 'Could not load event.');
-        if (!dead) setEvent(d.event);
+        const { data } = await getJson(`/api/community-events/${eventId}`);
+        if (!dead) setEvent(data.event);
       } catch (e) {
         if (!dead) setError(e.message || 'Could not load event.');
       } finally {
@@ -144,6 +154,151 @@ export default function CommunityHubEventDetail() {
     })();
     return () => { dead = true; };
   }, [eventId]);
+
+  const loadSocial = useCallback(async () => {
+    if (!eventId) return;
+    setSocialLoading(true);
+    setSocialError('');
+    try {
+      const token = localStorage.getItem('resqToken');
+      const headers = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const d = await fetchJson(`/api/community-events/${eventId}/social`, { headers });
+      setSocial({
+        likeCount: d.likeCount ?? 0,
+        liked: Boolean(d.liked),
+        comments: Array.isArray(d.comments) ? d.comments : [],
+      });
+    } catch (e) {
+      setSocialError(e.message || 'Could not load reactions.');
+    } finally {
+      setSocialLoading(false);
+    }
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!event) return;
+    loadSocial();
+  }, [event, loadSocial]);
+
+  const isStudentSession = () => {
+    try {
+      const raw = localStorage.getItem('resqUser');
+      if (!raw || !localStorage.getItem('resqToken')) return false;
+      const u = JSON.parse(raw);
+      return u?.role === 'user';
+    } catch {
+      return false;
+    }
+  };
+
+  const isAdminSession = () => {
+    try {
+      const raw = localStorage.getItem('resqUser');
+      if (!raw || !localStorage.getItem('resqToken')) return false;
+      const u = JSON.parse(raw);
+      return u?.role === 'admin';
+    } catch {
+      return false;
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!isStudentSession()) {
+      window.alert('Please sign in from the main dashboard with your student account to like this event.');
+      navigate('/dashboard');
+      return;
+    }
+    setLikePosting(true);
+    setSocialError('');
+    try {
+      const data = await fetchJson(`/api/community-events/${eventId}/like`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      setSocial((prev) => ({
+        ...(prev || { comments: [] }),
+        liked: data.liked,
+        likeCount: data.likeCount ?? 0,
+        comments: prev?.comments || [],
+      }));
+    } catch (e) {
+      setSocialError(e.message || 'Like failed.');
+    } finally {
+      setLikePosting(false);
+    }
+  };
+
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    const text = commentDraft.trim();
+    if (!text) return;
+    if (!isStudentSession()) {
+      window.alert('Please sign in from the main dashboard to comment.');
+      navigate('/dashboard');
+      return;
+    }
+    setCommentPosting(true);
+    setSocialError('');
+    try {
+      const data = await fetchJson(`/api/community-events/${eventId}/comments`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ text }),
+      });
+      setCommentDraft('');
+      if (data.comment) {
+        setSocial((prev) => ({
+          ...(prev || { likeCount: 0, liked: false, comments: [] }),
+          comments: [{ ...data.comment, replies: [] }, ...(prev?.comments || [])],
+        }));
+      } else {
+        await loadSocial();
+      }
+    } catch (err) {
+      setSocialError(err.message || 'Comment failed.');
+    } finally {
+      setCommentPosting(false);
+    }
+  };
+
+  const handlePostReply = async (e) => {
+    e?.preventDefault();
+    const text = replyDraft.trim();
+    const parentId = replyTargetId;
+    if (!text || !parentId) return;
+    if (!isAdminSession()) {
+      window.alert('Only administrators can reply to comments.');
+      return;
+    }
+    setReplyPosting(true);
+    setSocialError('');
+    try {
+      const data = await fetchJson(`/api/community-events/${eventId}/comments`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ text, parentCommentId: parentId }),
+      });
+      setReplyDraft('');
+      setReplyTargetId(null);
+      if (data.comment) {
+        setSocial((prev) => ({
+          ...(prev || { likeCount: 0, liked: false, comments: [] }),
+          comments: (prev?.comments || []).map((c) =>
+            String(c._id) === String(parentId)
+              ? { ...c, replies: [...(c.replies || []), data.comment] }
+              : c
+          ),
+        }));
+      } else {
+        await loadSocial();
+      }
+    } catch (err) {
+      setSocialError(err.message || 'Reply failed.');
+    } finally {
+      setReplyPosting(false);
+    }
+  };
 
   const ytEmbed = event?.videoUrl ? youtubeEmbedUrl(event.videoUrl) : null;
   const introPollOpen = Boolean(event && !pollGateDismissed);
@@ -201,13 +356,11 @@ export default function CommunityHubEventDetail() {
 
     setPollSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/community-events/${eventId}/poll`, {
+      await fetchJson(`/api/community-events/${eventId}/poll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Could not submit feedback.');
       finishThanks(true);
     } catch (err) {
       const msg = err?.message || '';
@@ -343,6 +496,318 @@ export default function CommunityHubEventDetail() {
                     No video available
                   </div>
                 )}
+
+                {/* Like & comment — under video (Facebook-style) */}
+                <section
+                  aria-label="Likes and comments"
+                  style={{
+                    background: tk.surfaceAlt,
+                    border: `0.5px solid ${tk.border}`,
+                    borderRadius: 12,
+                    padding: '12px 14px 14px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: 10,
+                      paddingBottom: 12,
+                      borderBottom: `0.5px solid ${tk.border}`,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={handleToggleLike}
+                      disabled={likePosting || socialLoading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 14px',
+                        borderRadius: 8,
+                        border: `0.5px solid ${social?.liked ? 'rgba(108,92,231,0.55)' : tk.border}`,
+                        background: social?.liked ? 'rgba(108,92,231,0.2)' : tk.surface,
+                        color: social?.liked ? tk.title : tk.muted,
+                        fontSize: 14,
+                        fontFamily: tk.sans,
+                        fontWeight: 600,
+                        cursor: likePosting || socialLoading ? 'wait' : 'pointer',
+                      }}
+                    >
+                      <ThumbsUp
+                        size={18}
+                        strokeWidth={2}
+                        fill={social?.liked ? 'currentColor' : 'none'}
+                      />
+                      Like
+                    </button>
+                    <span style={{ fontSize: 13, color: tk.factValue }}>
+                      {socialLoading
+                        ? '…'
+                        : `${social?.likeCount ?? 0} ${
+                            (social?.likeCount ?? 0) === 1 ? 'like' : 'likes'
+                          }`}
+                    </span>
+                    <span style={{ color: tk.hint, fontSize: 13 }} aria-hidden>
+                      |
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isStudentSession()) commentInputRef.current?.focus();
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: 'transparent',
+                        color: tk.muted,
+                        fontSize: 14,
+                        fontFamily: tk.sans,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <MessageCircle size={18} strokeWidth={2} />
+                      Comment
+                    </button>
+                  </div>
+
+                  {socialError && (
+                    <p style={{ margin: '10px 0 0', fontSize: 12, color: '#ef4444' }}>{socialError}</p>
+                  )}
+
+                  <div style={{ marginTop: 12, maxHeight: 280, overflowY: 'auto' }}>
+                    {(social?.comments && social.comments.length > 0
+                      ? [...social.comments].reverse()
+                      : []
+                    ).map((c) => (
+                      <div
+                        key={c._id}
+                        style={{
+                          padding: '10px 0',
+                          borderBottom: `0.5px solid ${tk.border}`,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: tk.title }}>
+                          {c.authorName}
+                        </p>
+                        <p style={{ margin: '4px 0 0', fontSize: 13, color: tk.descText, lineHeight: 1.45 }}>
+                          {c.text}
+                        </p>
+                        <p style={{ margin: '6px 0 0', fontSize: 11, color: tk.hint }}>
+                          {c.createdAt
+                            ? new Date(c.createdAt).toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : ''}
+                        </p>
+                        {(c.replies && c.replies.length > 0
+                          ? c.replies
+                          : []
+                        ).map((r) => (
+                          <div
+                            key={r._id}
+                            style={{
+                              marginTop: 10,
+                              marginLeft: 14,
+                              paddingLeft: 12,
+                              borderLeft: `2px solid rgba(108,92,231,0.35)`,
+                            }}
+                          >
+                            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: tk.title }}>
+                              {r.authorName}
+                            </p>
+                            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: tk.descText, lineHeight: 1.45 }}>
+                              {r.text}
+                            </p>
+                            <p style={{ margin: '4px 0 0', fontSize: 10, color: tk.hint }}>
+                              {r.createdAt
+                                ? new Date(r.createdAt).toLocaleString(undefined, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : ''}
+                            </p>
+                          </div>
+                        ))}
+                        {isAdminSession() && (
+                          <div style={{ marginTop: 10 }}>
+                            {String(replyTargetId) === String(c._id) ? (
+                              <form onSubmit={handlePostReply}>
+                                <textarea
+                                  value={replyDraft}
+                                  onChange={(e) => setReplyDraft(e.target.value)}
+                                  placeholder="Write a reply as admin…"
+                                  rows={2}
+                                  maxLength={2000}
+                                  disabled={replyPosting}
+                                  style={{
+                                    width: '100%',
+                                    boxSizing: 'border-box',
+                                    padding: '8px 10px',
+                                    borderRadius: 8,
+                                    border: `0.5px solid ${tk.border}`,
+                                    background: tk.descBg,
+                                    color: tk.descText,
+                                    fontSize: 13,
+                                    fontFamily: tk.sans,
+                                    resize: 'vertical',
+                                    minHeight: 52,
+                                  }}
+                                />
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReplyTargetId(null);
+                                      setReplyDraft('');
+                                    }}
+                                    disabled={replyPosting}
+                                    style={{
+                                      padding: '6px 12px',
+                                      borderRadius: 8,
+                                      border: `0.5px solid ${tk.border}`,
+                                      background: tk.surface,
+                                      color: tk.muted,
+                                      fontSize: 13,
+                                      fontFamily: tk.sans,
+                                      fontWeight: 600,
+                                      cursor: replyPosting ? 'wait' : 'pointer',
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={replyPosting || !replyDraft.trim()}
+                                    style={{
+                                      padding: '6px 14px',
+                                      borderRadius: 8,
+                                      border: 'none',
+                                      background: replyPosting ? tk.hint : '#6c5ce7',
+                                      color: '#fff',
+                                      fontSize: 13,
+                                      fontFamily: tk.sans,
+                                      fontWeight: 600,
+                                      cursor:
+                                        replyPosting || !replyDraft.trim() ? 'not-allowed' : 'pointer',
+                                    }}
+                                  >
+                                    {replyPosting ? 'Posting…' : 'Reply'}
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReplyTargetId(c._id);
+                                  setReplyDraft('');
+                                }}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  border: `0.5px solid ${tk.border}`,
+                                  background: tk.surface,
+                                  color: tk.muted,
+                                  fontSize: 12,
+                                  fontFamily: tk.sans,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Reply
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {!socialLoading && social && (!social.comments || social.comments.length === 0) && (
+                      <p style={{ margin: 0, fontSize: 13, color: tk.hint, fontStyle: 'italic' }}>
+                        {isAdminSession()
+                          ? 'No comments yet.'
+                          : 'No comments yet. Be the first to comment.'}
+                      </p>
+                    )}
+                  </div>
+
+                  {isAdminSession() ? (
+                    <p
+                      style={{
+                        margin: '14px 0 0',
+                        fontSize: 12,
+                        color: tk.hint,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Use <strong style={{ color: tk.muted }}>Reply</strong> under a comment to respond.
+                      New top-level comments are for signed-in students only.
+                    </p>
+                  ) : (
+                    <form onSubmit={handlePostComment} style={{ marginTop: 12 }}>
+                      <textarea
+                        ref={commentInputRef}
+                        value={commentDraft}
+                        onChange={(e) => setCommentDraft(e.target.value)}
+                        placeholder={
+                          isStudentSession()
+                            ? 'Write a comment…'
+                            : 'Sign in from the dashboard to comment'
+                        }
+                        disabled={!isStudentSession()}
+                        rows={2}
+                        maxLength={2000}
+                        style={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          border: `0.5px solid ${tk.border}`,
+                          background: tk.descBg,
+                          color: tk.descText,
+                          fontSize: 14,
+                          fontFamily: tk.sans,
+                          resize: 'vertical',
+                          minHeight: 64,
+                        }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                        <button
+                          type="submit"
+                          disabled={commentPosting || !commentDraft.trim() || !isStudentSession()}
+                          style={{
+                            padding: '8px 18px',
+                            borderRadius: 8,
+                            border: 'none',
+                            background: commentPosting ? tk.hint : '#6c5ce7',
+                            color: '#fff',
+                            fontSize: 14,
+                            fontFamily: tk.sans,
+                            fontWeight: 600,
+                            cursor:
+                              commentPosting || !commentDraft.trim() || !isStudentSession()
+                                ? 'not-allowed'
+                                : 'pointer',
+                          }}
+                        >
+                          {commentPosting ? 'Posting…' : 'Post'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </section>
 
                 {/* Description */}
                 {event.description && (

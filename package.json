@@ -9,7 +9,10 @@
     "frontend": "cd frontend && npm start",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "seed:community": "node backend/scripts/seedCommunityEvents.js",
-    "seed:lostfound": "node backend/scripts/seedLostFoundItems.js"
+    "seed:lostfound": "node backend/scripts/seedLostFoundItems.js",
+    "seed:student-items": "node backend/scripts/seedStudentUsersLostFound.js",
+    "seed:event-social": "node backend/scripts/seedCommunityEventSocial.js",
+    "cleanup:legacy-social": "node backend/scripts/cleanupLegacySocialOnly.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
