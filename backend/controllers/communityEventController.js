@@ -2,32 +2,36 @@ const crypto = require('crypto');
 const CommunityEvent = require('../models/CommunityEvent');
 const { enrichEvent, splitUpcomingFinished } = require('../utils/communityEventStatus');
 const { removeByEventId: removePollResponsesForEvent } = require('./eventPollController');
+const { parseCloudinaryUrl } = require('../utils/cloudinaryCredentials');
 
-const parseCloudinaryUrl = () => {
-  const cloudinaryUrl = process.env.CLOUDINARY_URL;
-  if (!cloudinaryUrl) return null;
-  const parsedUrl = new URL(cloudinaryUrl);
-  return {
-    cloudName: parsedUrl.hostname,
-    apiKey: parsedUrl.username,
-    apiSecret: parsedUrl.password,
-  };
-};
+/** Banner images for community events (override to match a folder in your Cloudinary Media Library). */
+function communityBannerFolder() {
+  const f = (process.env.CLOUDINARY_COMMUNITY_BANNER_FOLDER || 'resq-portal/community-events').trim();
+  return f.replace(/^\/+|\/+$/g, '');
+}
 
-async function uploadImageToCloudinary(imageData, folder = 'resq-portal/community-events') {
+function communityVideoFolder() {
+  const f = (
+    process.env.CLOUDINARY_COMMUNITY_VIDEO_FOLDER || 'resq-portal/community-events/videos'
+  ).trim();
+  return f.replace(/^\/+|\/+$/g, '');
+}
+
+async function uploadImageToCloudinary(imageData, folder) {
   if (!imageData) return null;
+  const resolvedFolder = folder || communityBannerFolder();
   const credentials = parseCloudinaryUrl();
   if (!credentials) throw new Error('Cloudinary is not configured.');
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const signaturePayload = `folder=${folder}&timestamp=${timestamp}${credentials.apiSecret}`;
+  const signaturePayload = `folder=${resolvedFolder}&timestamp=${timestamp}${credentials.apiSecret}`;
   const signature = crypto.createHash('sha1').update(signaturePayload).digest('hex');
 
   const body = new URLSearchParams({
     file: imageData,
     api_key: credentials.apiKey,
     timestamp: String(timestamp),
-    folder,
+    folder: resolvedFolder,
     signature,
   });
 
@@ -42,20 +46,22 @@ async function uploadImageToCloudinary(imageData, folder = 'resq-portal/communit
   return { url: data.secure_url, publicId: data.public_id };
 }
 
-async function uploadVideoToCloudinary(videoData, folder = 'resq-portal/community-events/videos') {
+async function uploadVideoToCloudinary(videoData, folder) {
   if (!videoData) return null;
   const credentials = parseCloudinaryUrl();
   if (!credentials) throw new Error('Cloudinary is not configured.');
 
+  const resolvedFolder = folder || communityVideoFolder();
+
   const timestamp = Math.floor(Date.now() / 1000);
-  const signaturePayload = `folder=${folder}&timestamp=${timestamp}${credentials.apiSecret}`;
+  const signaturePayload = `folder=${resolvedFolder}&timestamp=${timestamp}${credentials.apiSecret}`;
   const signature = crypto.createHash('sha1').update(signaturePayload).digest('hex');
 
   const body = new URLSearchParams({
     file: videoData,
     api_key: credentials.apiKey,
     timestamp: String(timestamp),
-    folder,
+    folder: resolvedFolder,
     signature,
   });
 
