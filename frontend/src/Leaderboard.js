@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Award, Medal, Crown, Star, TrendingUp, Loader, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import io from 'socket.io-client';
 
 const Leaderboard = () => {
   const [users, setUsers] = useState([]);
@@ -75,8 +74,11 @@ const Leaderboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="w-8 h-8 animate-spin text-green-600" />
+      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-1 items-center justify-center py-16">
+          <Loader className="h-8 w-8 animate-spin text-green-600" />
+        </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -84,7 +86,7 @@ const Leaderboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Back Button */}
+        {/* 🆕 Back Button */}
         <button
           onClick={() => navigate('/dashboard')}
           className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition"
@@ -234,6 +236,7 @@ const Leaderboard = () => {
           </div>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 };

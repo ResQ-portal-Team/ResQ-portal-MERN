@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from './config';
+import SiteFooter from './SiteFooter';
 
 const formatEventDate = (d) => {
   if (!d) return '—';
@@ -73,51 +74,78 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans selection:bg-blue-100 dark:bg-slate-950 dark:text-slate-100 dark:selection:bg-blue-900/40">
+    <div className="flex min-h-screen flex-col bg-[#f8fafc] font-sans selection:bg-blue-100 dark:bg-slate-950 dark:text-slate-100 dark:selection:bg-blue-900/40">
       
-      {/* Fixed Navigation Bar */}
-      <nav className="fixed top-0 w-full z-50 border-b border-gray-100 bg-white/70 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="p-5 flex justify-between items-center max-w-7xl mx-auto">
-          <div className="flex items-center gap-2">
-            <div className="bg-blue-600 p-2 rounded-lg text-white font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/50">ResQ</div>
-            <span className="text-xl font-black tracking-tight text-gray-900 uppercase dark:text-white">Portal</span>
+      {/* Navigation — logo left, section links centered, About / auth right */}
+      <nav className="flex flex-wrap items-center gap-y-3 border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-8 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex min-w-0 flex-1 basis-0 items-center justify-start">
+          <div className="flex cursor-pointer items-center gap-2" onClick={() => navigate('/')}>
+            <div className="rounded-lg bg-blue-600 p-2 text-sm font-bold text-white">ResQ</div>
+            <span className="text-center text-xl font-bold tracking-tight text-gray-800 dark:text-slate-100">Portal</span>
           </div>
-          
-          <div className="hidden md:flex gap-8 text-sm font-bold text-gray-500 dark:text-slate-400">
-             <button onClick={() => scrollToSection('features')} className="transition-colors hover:text-blue-600 dark:hover:text-blue-400">Features</button>
-             <button onClick={() => scrollToSection('how-it-works')} className="transition-colors hover:text-blue-600 dark:hover:text-blue-400">How It Works</button>
-             <button onClick={() => scrollToSection('stats')} className="transition-colors hover:text-blue-600 dark:hover:text-blue-400">Stats</button>
-          </div>
+        </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div className="order-last flex w-full flex-[1_1_100%] flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:order-none sm:w-auto sm:flex-[1_1_0%] sm:justify-center">
+          <button
+            type="button"
+            onClick={() => scrollToSection('features')}
+            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
+          >
+            Features
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToSection('how-it-works')}
+            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
+          >
+            How It Works
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToSection('stats')}
+            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
+          >
+            Stats
+          </button>
+        </div>
+
+        <div className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-4">
+          <button
+            type="button"
+            onClick={() => navigate('/contact')}
+            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
+          >
+            Contact Us
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/about')}
+            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
+          >
+            About Us
+          </button>
+          {currentUser ? (
             <button
               type="button"
-              onClick={() => navigate('/about')}
-              className="rounded-full border-2 border-gray-200 bg-white/80 px-4 py-2 text-sm font-bold text-gray-800 shadow-sm transition-all hover:border-blue-600 hover:text-blue-600 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:border-blue-400 dark:hover:text-blue-300 sm:px-5 sm:text-base"
+              onClick={() => setShowProfile(true)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200"
             >
-              About Us
+              My Profile
             </button>
-            {currentUser ? (
-              <button
-                onClick={() => setShowProfile(true)}
-                className="rounded-full bg-gray-900 px-4 py-2 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-blue-400 sm:px-6 sm:text-base"
-              >
-                My Profile
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="rounded-full bg-gray-900 px-4 py-2 text-sm font-bold text-white shadow-md transition-all hover:bg-blue-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-blue-400 sm:px-6 sm:text-base"
-              >
-                Login
-              </button>
-            )}
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
+            >
+              Login
+            </button>
+          )}
         </div>
       </nav>
 
       {/* Hero Section */}
-      <main className="mx-auto flex max-w-7xl flex-col items-center gap-16 px-6 pb-20 pt-40 md:flex-row">
+      <main className="mx-auto flex max-w-7xl flex-col items-center gap-16 px-6 pb-20 pt-12 md:flex-row md:pt-16">
         <div className="flex-1 text-center md:text-left">
           <h1 className="mb-8 text-5xl font-black leading-[1.1] text-gray-900 dark:text-white md:text-7xl">
             Find what you <span className="italic text-blue-600 dark:text-blue-400">lost</span>, <br />
@@ -304,10 +332,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Footer Section */}
-      <footer className="border-t border-gray-100 py-10 text-center text-xs text-gray-400 dark:border-slate-800 dark:text-slate-500">
-        © 2026 ResQ Portal. Built for the SLIIT Community.
-      </footer>
+      <SiteFooter />
 
       {/* Profile Modal */}
       {showProfile && currentUser && (
