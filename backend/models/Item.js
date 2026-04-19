@@ -9,9 +9,12 @@ const ItemSchema = new mongoose.Schema({
     category: { type: String, required: true },
     // Location for matching: "Canteen", "Lab 01", "Main Hall"
     location: { type: String, required: true },
-    image: { type: String }, // URL or filename for the uploaded image
+    image: { type: String }, // URL for the uploaded image from Cloudinary
     imagePublicId: { type: String, default: null },
-    date: { type: Date, default: Date.now },
+    /** AI generated keywords based on the uploaded image for advanced matching */
+    imageTags: { type: [String], default: [] }, 
+    /** Date the item was lost or found (user-provided). */
+    date: { type: Date },
     postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     // Legacy "pending" values are treated as active items in the UI and routes.
     status: { type: String, enum: ['active', 'pending', 'returned'], default: 'active' },
