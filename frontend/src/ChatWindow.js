@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Shield, Lock, CheckCircle, ArrowLeft, Loader, MessageCircle, Wifi, WifiOff } from 'lucide-react';
+import { Send, Shield, Lock, CheckCircle, ArrowLeft, Loader, MessageCircle, Wifi, WifiOff, Trash2 } from 'lucide-react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 
@@ -119,6 +119,10 @@ const ChatWindow = () => {
       console.log('📨 Received message:', message);
       setMessages(prev => [...prev, message]);
     });
+
+    newSocket.on('chat-cleared', () => {
+      setMessages([]);
+    });
     
     newSocket.on('user-typing', () => {
       setIsTyping(true);
@@ -193,6 +197,31 @@ const ChatWindow = () => {
       alert('Failed to generate OTP');
     } finally {
       setGeneratingOTP(false);
+    }
+  };
+
+  const clearChat = async () => {
+    if (
+      !window.confirm(
+        'Clear all messages in this chat? This removes the history for both participants and cannot be undone.'
+      )
+    ) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('resqToken');
+      const response = await fetch(`/api/chat/room/${chatRoomId}/messages`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to clear chat');
+      }
+      setMessages([]);
+    } catch (error) {
+      console.error('Clear chat failed:', error);
+      alert(error.message || 'Failed to clear chat');
     }
   };
 
@@ -277,6 +306,21 @@ const ChatWindow = () => {
           </div>
 
           <div style={styles.headerRight}>
+            <button
+              type="button"
+              onClick={clearChat}
+              title="Clear chat history"
+              aria-label="Clear chat"
+              style={styles.clearChatBtn}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(239,68,68,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+              }}
+            >
+              <Trash2 size={18} color="#fca5a5" />
+            </button>
             <div style={styles.shieldBadge}>
               <Shield size={14} color="#4ade80" />
               <span style={styles.shieldText}>Secured</span>
@@ -582,6 +626,20 @@ const styles = {
   headerRight: {
     display: 'flex',
     alignItems: 'center',
+    gap: '10px',
+  },
+  clearChatBtn: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    border: 'none',
+    background: 'rgba(255,255,255,0.08)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.2s',
+    flexShrink: 0,
   },
   shieldBadge: {
     display: 'flex',
