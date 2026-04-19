@@ -25,9 +25,86 @@
   .rotate-3d-tilt {
     transform: rotateY(-12deg) rotateX(6deg);
   }
+
+  /* 🆕 Chat page background */
+  .chat-bg {
+    background-image: url('/chatpagemodel.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  /* 🆕 Message bubble animations */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  /* 🆕 Typing indicator dots */
+  @keyframes typingDot {
+    0%, 60%, 100% {
+      transform: translateY(0);
+      opacity: 0.5;
+    }
+    30% {
+      transform: translateY(-4px);
+      opacity: 1;
+    }
+  }
+
+  .typing-dot {
+    animation: typingDot 1.2s infinite ease-in-out;
+  }
+}
+
+/* Chat message scrollbar */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
 
 /* Smooth scrolling for navigation */
 html {
   scroll-behavior: smooth;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+}
+
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Dark mode adjustments for chat */
+.dark .chat-bg {
+  background-blend-mode: overlay;
+  background-color: rgba(0, 0, 0, 0.6);
 }
