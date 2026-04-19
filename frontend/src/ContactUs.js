@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from './config';
+import AppNavBar from './AppNavBar';
+import SiteFooter from './SiteFooter';
 
 const initialForm = { name: '', email: '', subject: '', message: '' };
 
@@ -10,7 +12,6 @@ const parseResponseBody = async (res) => {
   try {
     return JSON.parse(text);
   } catch (_err) {
-    // Some proxy/server errors return HTML (e.g., <!DOCTYPE ...>).
     return { message: 'Server returned a non-JSON response. Please check backend server and API route.' };
   }
 };
@@ -21,64 +22,6 @@ const ContactUs = () => {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [showBellPanel, setShowBellPanel] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
-
-  const token = localStorage.getItem('resqToken');
-
-  const loadNotifications = async () => {
-    if (!token) {
-      setNotifications([]);
-      return;
-    }
-    setLoadingNotifications(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/contacts/my-notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await parseResponseBody(res);
-      if (!res.ok) throw new Error(data.message || 'Failed to load notifications.');
-      setNotifications(data.notifications || []);
-    } catch (_err) {
-      setNotifications([]);
-    } finally {
-      setLoadingNotifications(false);
-    }
-  };
-
-  useEffect(() => {
-    loadNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!token) return undefined;
-    const id = setInterval(() => {
-      loadNotifications();
-    }, 10000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const markSeen = async (id) => {
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_BASE}/api/contacts/my-notifications/${id}/seen`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await parseResponseBody(res);
-      if (!res.ok) throw new Error(data.message || 'Failed to update notification.');
-      setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, resolvedSeenByUser: true } : n))
-      );
-    } catch (_err) {
-      // Keep UX simple: ignore to avoid blocking user.
-    }
-  };
-
-  const unreadCount = notifications.filter((n) => n.resolvedSeenByUser !== true).length;
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -95,12 +38,12 @@ const ContactUs = () => {
     }
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('resqToken');
+      const auth = localStorage.getItem('resqToken');
       const res = await fetch(`${API_BASE}/api/contacts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
         },
         body: JSON.stringify(form),
       });
@@ -108,8 +51,6 @@ const ContactUs = () => {
       if (!res.ok) throw new Error(data.message || 'Failed to send message.');
       setNotice(data.message || 'Message sent.');
       setForm(initialForm);
-      // Optional: redirect back after a short delay
-      // setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
       setError(err.message || 'Failed to send message.');
     } finally {
@@ -117,168 +58,140 @@ const ContactUs = () => {
     }
   };
 
+  const inputClass =
+    'w-full rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3.5 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-blue-400';
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 dark:bg-slate-950 dark:text-slate-100">
-      <nav className="flex items-center justify-between border-b border-gray-100 bg-white p-4 px-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="bg-blue-600 p-2 rounded-lg text-white font-bold text-sm">ResQ</div>
-          <span className="text-center text-xl font-bold tracking-tight text-gray-800 dark:text-slate-100">Portal</span>
+    <div className="flex min-h-screen flex-col bg-[#f8fafc] font-sans selection:bg-blue-100 dark:bg-slate-950 dark:text-slate-100 dark:selection:bg-blue-900/40">
+      <AppNavBar />
+
+      <main className="mx-auto w-full max-w-7xl flex-1 px-2 pb-24 pt-8 md:pt-10">
+        <div className="relative mb-12 md:mb-16">
+          <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-[100px] dark:bg-blue-400/10" />
+          <p className="relative mb-2 text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+            Get in touch
+          </p>
+          <h1 className="relative mb-4 text-4xl font-black leading-tight text-gray-900 dark:text-white md:text-6xl md:leading-[1.1]">
+            Contact{' '}
+            <span className="italic text-blue-600 dark:text-blue-400">ResQ</span>
+          </h1>
+          <p className="relative max-w-2xl text-lg leading-relaxed text-gray-500 dark:text-slate-400 md:text-xl">
+            Questions, feedback, or campus lost &amp; found support — the admin team reads every message.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-4 relative">
-          <button
-            type="button"
-            onClick={() => {
-              setShowBellPanel((v) => !v);
-              loadNotifications();
-            }}
-            className="relative text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
-            title="Notifications"
-          >
-            <span className="text-xl" role="img" aria-label="notifications">
-              🔔
-            </span>
-            {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
-                {unreadCount}
-              </span>
+
+        <div className="grid items-start gap-10 lg:grid-cols-12 lg:gap-14">
+          <div className="lg:col-span-5">
+            <div className="space-y-4">
+              <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="mb-2 text-2xl">✉️</div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">We reply soon</h2>
+                <p className="mt-2 text-sm leading-relaxed text-gray-500 dark:text-slate-400">
+                  Use your SLIIT email when possible so we can verify and respond faster.
+                </p>
+              </div>
+              <div className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="mb-2 text-2xl">🛡️</div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Signed-in users</h2>
+                <p className="mt-2 text-sm leading-relaxed text-gray-500 dark:text-slate-400">
+                  Log in before sending to link your ticket to your account and get resolution updates in the bell
+                  above.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-7">
+            {notice && (
+              <div className="mb-6 rounded-2xl border border-green-200/80 bg-green-50 px-5 py-4 text-sm font-medium text-green-800 dark:border-green-800/50 dark:bg-green-950/40 dark:text-green-300">
+                {notice}
+              </div>
             )}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/about')}
-            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
-          >
-            About Us
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="font-medium text-gray-600 transition hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
-          >
-            Back to Dashboard
-          </button>
+            {error && (
+              <div className="mb-6 rounded-2xl border border-red-200/80 bg-red-50 px-5 py-4 text-sm font-medium text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                {error}
+              </div>
+            )}
 
-          {showBellPanel && (
-            <div className="absolute right-0 top-12 z-20 w-96 max-w-[90vw] rounded-xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-900">
-              <h3 className="mb-2 text-sm font-bold text-gray-800 dark:text-slate-100">Resolved updates</h3>
-              {loadingNotifications ? (
-                <p className="py-3 text-sm text-gray-500 dark:text-slate-400">Loading...</p>
-              ) : notifications.length === 0 ? (
-                <p className="py-3 text-sm text-gray-500 dark:text-slate-400">No resolved updates yet.</p>
-              ) : (
-                <div className="max-h-72 space-y-2 overflow-y-auto">
-                  {notifications.map((n) => (
-                    <div key={n._id} className="rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/80">
-                      <p className="truncate text-sm font-semibold text-gray-800 dark:text-slate-100">
-                        {n.subject || 'Contact request'}
-                      </p>
-                      <p className="mt-1 text-xs font-medium text-green-700 dark:text-green-400">
-                        Your contact request has been marked as resolved by admin.
-                      </p>
-                      {n.message && (
-                        <p className="mt-1 line-clamp-2 text-xs text-gray-600 dark:text-slate-400">
-                          Message: {n.message}
-                        </p>
-                      )}
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-gray-500 dark:text-slate-500">
-                          {n.resolvedAt ? new Date(n.resolvedAt).toLocaleString() : 'Just now'}
-                        </span>
-                        {n.resolvedSeenByUser === true ? (
-                          <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-500">Read</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => markSeen(n._id)}
-                            className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
-                          >
-                            Mark as read
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </nav>
-
-      <div className="mx-auto max-w-3xl p-6">
-        <h1 className="mb-2 text-3xl font-black text-gray-900 dark:text-white">Contact us</h1>
-        <p className="mb-6 text-gray-500 dark:text-slate-400">
-          Have a question or feedback? Send us a message and the admin team will review it.
-        </p>
-
-        {notice && (
-          <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800/50 dark:bg-green-950/40 dark:text-green-300">
-            {notice}
-          </div>
-        )}
-        {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-900">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-300">Your name</label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={onChange}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="Full name"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-300">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={onChange}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                placeholder="you@my.sliit.lk"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-300">Subject</label>
-            <input
-              name="subject"
-              value={form.subject}
-              onChange={onChange}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="How can we help?"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-300">Message</label>
-            <textarea
-              name="message"
-              rows={5}
-              value={form.message}
-              onChange={onChange}
-              className="w-full resize-y rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-blue-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="Write your message here..."
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white transition hover:bg-blue-700 disabled:opacity-70"
+            <form
+              onSubmit={onSubmit}
+              className="space-y-5 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-[0_20px_60px_rgba(0,0,0,0.06)] dark:border-slate-700 dark:bg-slate-800/80 dark:shadow-none md:p-10"
             >
-              {submitting ? 'Sending…' : 'Send message'}
-            </button>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                    Your name
+                  </label>
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={onChange}
+                    className={inputClass}
+                    placeholder="Full name"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={onChange}
+                    className={inputClass}
+                    placeholder="you@my.sliit.lk"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                  Subject
+                </label>
+                <input
+                  name="subject"
+                  value={form.subject}
+                  onChange={onChange}
+                  className={inputClass}
+                  placeholder="How can we help?"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                  Message
+                </label>
+                <textarea
+                  name="message"
+                  rows={5}
+                  value={form.message}
+                  onChange={onChange}
+                  className={`${inputClass} resize-y min-h-[140px]`}
+                  placeholder="Write your message here…"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="rounded-2xl border-2 border-gray-200 px-8 py-4 text-base font-bold text-gray-800 transition hover:border-blue-600 hover:bg-white hover:text-blue-600 dark:border-slate-600 dark:text-slate-200 dark:hover:border-blue-400 dark:hover:bg-slate-800"
+                >
+                  Back to home
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="rounded-2xl bg-blue-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-blue-200 transition hover:bg-blue-700 disabled:opacity-60 dark:shadow-blue-900/40"
+                >
+                  {submitting ? 'Sending…' : 'Send message'}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 };

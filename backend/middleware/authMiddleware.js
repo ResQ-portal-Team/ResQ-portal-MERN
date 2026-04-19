@@ -64,4 +64,26 @@ function requireAdmin(req, res, next) {
     next();
 }
 
-module.exports = { authenticate, requireAdmin, getJwtSecret, protect };
+/** Sets req.user from JWT when present; otherwise req.user = null (no 401). */
+function optionalAuthenticate(req, res, next) {
+    try {
+        const authHeader = req.headers.authorization || '';
+        if (!authHeader.startsWith('Bearer ')) {
+            req.user = null;
+            return next();
+        }
+        const jwtSecret = getJwtSecret();
+        if (!jwtSecret) {
+            req.user = null;
+            return next();
+        }
+        const token = authHeader.replace('Bearer ', '');
+        req.user = jwt.verify(token, jwtSecret);
+        next();
+    } catch {
+        req.user = null;
+        next();
+    }
+}
+
+module.exports = { authenticate, requireAdmin, getJwtSecret, protect, optionalAuthenticate };
