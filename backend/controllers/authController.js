@@ -306,7 +306,7 @@ exports.forgotPassword = async (req, res) => {
         await PasswordReset.findOneAndUpdate(
             { email: emailNorm },
             { email: emailNorm, otpHash, expiresAt },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
         /** Always mail the address the user typed (normalized). From-address is EMAIL_USER (e.g. qwe730375@gmail.com). */
@@ -339,7 +339,7 @@ exports.forgotPassword = async (req, res) => {
         } else if (mailError) {
             return res.status(502).json({
                 message:
-                    'Could not send email via Gmail. Check EMAIL_USER / app password, network allows SMTP port 587 or 465, or set RESQ_SHOW_OTP_IN_RESPONSE=1 in backend/.env for local testing. Details: '
+                    'Could not send email via Gmail. Check EMAIL_USER / app password, network allows SMTP port 587 or 465. If you see a TLS/certificate error on a campus or corporate network, set SMTP_TLS_REJECT_UNAUTHORIZED=0 (or RESQ_SMTP_ALLOW_INSECURE_TLS=1) in backend/.env, or set RESQ_SHOW_OTP_IN_RESPONSE=1 for local testing. Details: '
                     + (mailError.message || 'unknown'),
                 sentFrom: mailUser,
                 sentTo: deliverTo,
@@ -428,7 +428,7 @@ exports.resetPassword = async (req, res) => {
             await AdminSettings.findOneAndUpdate(
                 { _id: 'admin' },
                 { _id: 'admin', passwordHash: hashedPassword },
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: 'after' }
             );
         } else {
             const user = await findUserByEmailLoose(emailNorm);

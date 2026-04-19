@@ -1,5 +1,33 @@
 const nodemailer = require('nodemailer');
 
+let warnedInsecureSmtpTls = false;
+
+/**
+ * Gmail uses a public CA; "self-signed certificate in certificate chain" usually means
+ * SSL inspection (corporate/campus proxy) or a broken local trust store.
+ * - In production, TLS verification stays on unless you set SMTP_TLS_REJECT_UNAUTHORIZED=0
+ *   or RESQ_SMTP_ALLOW_INSECURE_TLS=1 (not recommended on the public internet).
+ * - Outside production, verification is relaxed by default so dev/campus SMTP still works.
+ */
+function smtpTlsConfig() {
+    const override = String(process.env.SMTP_TLS_REJECT_UNAUTHORIZED ?? '')
+        .trim()
+        .toLowerCase();
+    if (['0', 'false', 'no', 'off'].includes(override)) {
+        return { rejectUnauthorized: false };
+    }
+    if (['1', 'true', 'yes', 'on'].includes(override)) {
+        return { rejectUnauthorized: true };
+    }
+    const allowInsecure = String(process.env.RESQ_SMTP_ALLOW_INSECURE_TLS ?? '')
+        .trim()
+        .toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(allowInsecure)) {
+        return { rejectUnauthorized: false };
+    }
+    return { rejectUnauthorized: process.env.NODE_ENV === 'production' };
+}
+
 function getMailCredentials() {
     const user = (process.env.EMAIL_USER || '').trim();
     const rawPass = process.env.EMAIL_PASS || '';
@@ -17,16 +45,20 @@ function sendOtpCopyToSenderEnabled() {
 }
 
 function transportOptions(port, secure, auth, extra = {}) {
+    const baseTls = smtpTlsConfig();
+    const { tls: extraTls, ...rest } = extra;
+    const tls = { ...baseTls, ...(extraTls && typeof extraTls === 'object' ? extraTls : {}) };
     return {
         host: 'smtp.gmail.com',
         port,
         secure,
         auth,
+        tls,
         connectionTimeout: 25_000,
         greetingTimeout: 25_000,
         socketTimeout: 25_000,
         family: 4,
-        ...extra,
+        ...rest,
     };
 }
 
@@ -108,6 +140,12 @@ async function sendPasswordResetOtp(to, otp) {
 
     let lastErr;
     for (const { name, options } of buildGmailAttempts(auth)) {
+        if (!warnedInsecureSmtpTls && options.tls && options.tls.rejectUnauthorized === false) {
+            warnedInsecureSmtpTls = true;
+            console.warn(
+                '[mail] SMTP TLS verification is disabled for this process (non-production default, or SMTP_TLS_REJECT_UNAUTHORIZED=0 / RESQ_SMTP_ALLOW_INSECURE_TLS=1).'
+            );
+        }
         const transport = nodemailer.createTransport(options);
         try {
             const info = await transport.sendMail(mailOptions);
