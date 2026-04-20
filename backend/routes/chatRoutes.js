@@ -4,6 +4,7 @@ const { protect } = require('../middleware/authMiddleware'); // ✅ Now protect 
 const {
   getOrCreateChatRoom,
   getMessages,
+  clearMessages,
   getUserChatRooms,
   generateOTP,
   verifyOTP
@@ -16,6 +17,7 @@ router.use(protect);
 router.post('/room', getOrCreateChatRoom);
 router.get('/rooms', getUserChatRooms);
 router.get('/room/:chatRoomId/messages', getMessages);
+router.delete('/room/:chatRoomId/messages', clearMessages);
 router.post('/room/:chatRoomId/otp', generateOTP);
 router.post('/room/:chatRoomId/verify', verifyOTP);
 

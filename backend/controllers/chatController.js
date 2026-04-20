@@ -2,6 +2,7 @@ const ChatRoom = require('../models/ChatRoom');
 const Message = require('../models/Message');
 const Item = require('../models/Item');
 const User = require('../models/User');
+const { getIO } = require('../socketServer');
 const { createNotification } = require('./notificationController');
 const { filterProfanity, containsProfanity } = require('../utils/profanityFilter');
 const { checkRateLimit } = require('../utils/rateLimiter');
@@ -77,6 +78,36 @@ exports.getMessages = async (req, res) => {
   } catch (error) {
     console.error('❌ Get messages error:', error);
     res.status(500).json({ message: 'Failed to get messages' });
+  }
+};
+
+/** Delete all messages in a room (participants only). Notifies sockets so both clients clear the window. */
+exports.clearMessages = async (req, res) => {
+  try {
+    const { chatRoomId } = req.params;
+    const userId = String(req.user._id || req.user.id);
+
+    const room = await ChatRoom.findById(chatRoomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Chat room not found.' });
+    }
+    const isParticipant = room.participants.some((p) => String(p.userId) === userId);
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    await Message.deleteMany({ chatRoomId });
+    await ChatRoom.findByIdAndUpdate(chatRoomId, { $unset: { lastMessage: 1 } });
+
+    const io = getIO();
+    if (io) {
+      io.to(chatRoomId).emit('chat-cleared', { chatRoomId });
+    }
+
+    res.json({ success: true, message: 'Chat cleared.' });
+  } catch (error) {
+    console.error('❌ Clear messages error:', error);
+    res.status(500).json({ message: 'Failed to clear chat' });
   }
 };
 
