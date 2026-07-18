@@ -79,6 +79,7 @@ For real-time communication, the frontend integrates Socket.IO Client, maintaini
 The frontend is structured around reusable components, with state management handled through React hooks (useState, useEffect, useContext) and custom hooks for complex logic such as real-time messaging and notification polling. The application is fully responsive, optimized for both desktop and mobile viewing, ensuring accessibility across devices.
 
 Architecture Overview
+
 The system follows a client-server architecture with the frontend serving as the presentation layer, communicating with the backend API via HTTP/HTTPS for data operations and WebSocket connections for real-time features. The backend acts as the application layer, managing all business logic, authentication, AI integrations, and database interactions. MongoDB serves as the persistent storage layer, with indexes optimized for query performance on frequently accessed fields like item categories, user IDs, and chat room participants.
 My Conversations - All chat rooms with matches
 
